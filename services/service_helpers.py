@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import os
 from collections.abc import Awaitable, Callable
 from typing import TypeVar

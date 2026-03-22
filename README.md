@@ -66,7 +66,7 @@ Copy-Item .env.example .env
 
 | 变量名 | 说明 |
 |---|---|
-| `AKSHARE_TOKEN` | AkShare/相关数据源访问 Token |
+| `AKSHARE_TOKEN` | 雪球 `xq_a_token`，需手动配置 |
 | `PG_HOST` | PostgreSQL 主机 |
 | `PG_PORT` | PostgreSQL 端口 |
 | `PG_DATABASE` | 数据库名 |

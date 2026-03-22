@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter
+from fastapi import APIRouter
 
 from api.route_helpers import bool_status_response, list_response
 from repositories.monitor_repository import MonitorStockRepository

@@ -1,20 +1,18 @@
 # services/portfolio_service.py
-import os
 import asyncio
 import aiohttp
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import akshare as ak
 from repositories.portfolio_repository import StockRepository
+from services.service_helpers import build_xueqiu_headers, clear_proxy_env
 from utils.logger import get_logger
 
 # 获取日志实例
 logger = get_logger('portfolio')
 
 # 清除代理设置
-os.environ.pop('http_proxy', None)
-os.environ.pop('https_proxy', None)
-os.environ.pop('all_proxy', None)
+clear_proxy_env()
 
 
 class PortfolioService: 
@@ -23,13 +21,7 @@ class PortfolioService:
     @staticmethod
     def _get_headers() -> dict:
         """获取请求头，包含cookie"""
-        token = os.getenv('AKSHARE_TOKEN', '')
-        cookie = f"xq_a_token={token};"
-        return {
-            'Cookie': cookie,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://xueqiu.com/'
-        }
+        return build_xueqiu_headers()
     
     @staticmethod
     async def _fetch_stock_price(session: aiohttp.ClientSession, stock_code: str) -> tuple:

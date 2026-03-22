@@ -1,9 +1,10 @@
-import os
 import asyncio
 import aiohttp
 from datetime import datetime
 from typing import List, Dict, Optional
 import logging
+
+from services.service_helpers import build_xueqiu_headers
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,7 @@ class XueqiuService:
     @staticmethod
     def _get_headers() -> Dict[str, str]:
         """获取请求头，包含cookie"""
-        token = os.getenv('AKSHARE_TOKEN', '')
-        cookie = f"xq_a_token={token};"
-        return {
-            'Cookie': cookie,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://xueqiu.com/'
-        }
+        return build_xueqiu_headers()
     
     @staticmethod
     async def _fetch_cube_data(session: aiohttp.ClientSession, cube_symbol: str, count: int = 20, page: int = 1) -> Optional[List[Dict]]:
