@@ -3,8 +3,8 @@
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
+from schemas.tools import CalculateCostRequest, ExportKlineRequest
 from utils.api_helpers import success_response
 from utils.logger import get_logger
 
@@ -13,22 +13,6 @@ logger = get_logger('tools_routes')
 tools_router = APIRouter()
 
 NUMERIC_PRICE_COLUMNS = ['开盘', '收盘', '最高', '最低']
-
-
-class Position(BaseModel):
-    price: float
-    shares: int
-
-
-class CalculateCostRequest(BaseModel):
-    positions: list[Position]
-
-
-class ExportKlineRequest(BaseModel):
-    code: str
-    format: str = 'csv'
-    start_date: str = None
-    end_date: str = None
 
 
 @tools_router.post('/calculate-cost')

@@ -1,56 +1,21 @@
 ﻿from fastapi import APIRouter
-from pydantic import BaseModel
 from repositories.monitor_repository import MonitorStockRepository
 from repositories.portfolio_repository import StockRepository
+from schemas.admin import (
+    AdminMonitorStockCreate,
+    AdminMonitorStockUpdate,
+    AdminStockCreate,
+    AdminStockUpdate,
+    ToggleEnabled,
+    XueqiuCubeCreate,
+    XueqiuCubeUpdate,
+)
 from utils.api_helpers import status_message_response, success_response
 from utils.logger import get_logger
 
 logger = get_logger('admin_routes')
 
 admin_router = APIRouter()
-
-
-class StockCreate(BaseModel):
-    code: str
-    name: str
-    cost_price: float
-    shares: int
-
-
-class StockUpdate(BaseModel):
-    name: str
-    cost_price: float
-    shares: int
-
-
-class MonitorStockCreate(BaseModel):
-    code: str
-    name: str
-    timeframe: str
-    reasonable_pe_min: float = 15
-    reasonable_pe_max: float = 20
-
-
-class MonitorStockUpdate(BaseModel):
-    name: str
-    timeframe: str
-    reasonable_pe_min: float = 15
-    reasonable_pe_max: float = 20
-
-
-class ToggleEnabled(BaseModel):
-    enabled: bool = True
-
-
-class XueqiuCubeCreate(BaseModel):
-    cube_symbol: str
-    cube_name: str
-    enabled: bool = True
-
-
-class XueqiuCubeUpdate(BaseModel):
-    cube_name: str
-    enabled: bool = True
 
 
 @admin_router.get('/stocks')
@@ -61,13 +26,13 @@ async def list_stocks():
 
 
 @admin_router.post('/stocks')
-async def create_stock(data: StockCreate):
+async def create_stock(data: AdminStockCreate):
     success, msg = await StockRepository.add(data.code, data.name, data.cost_price, data.shares)
     return status_message_response(success, msg)
 
 
 @admin_router.put('/stocks/{code}')
-async def update_stock(code: str, data: StockUpdate):
+async def update_stock(code: str, data: AdminStockUpdate):
     success = await StockRepository.update(code, data.name, data.cost_price, data.shares)
     return status_message_response(success, '更新成功', '更新失败')
 
@@ -86,7 +51,7 @@ async def list_monitor_stocks():
 
 
 @admin_router.post('/monitor-stocks')
-async def create_monitor_stock(data: MonitorStockCreate):
+async def create_monitor_stock(data: AdminMonitorStockCreate):
     success, msg = await MonitorStockRepository.add(
         data.code,
         data.name,
@@ -98,7 +63,7 @@ async def create_monitor_stock(data: MonitorStockCreate):
 
 
 @admin_router.put('/monitor-stocks/{code}')
-async def update_monitor_stock(code: str, data: MonitorStockUpdate):
+async def update_monitor_stock(code: str, data: AdminMonitorStockUpdate):
     success = await MonitorStockRepository.update(
         code,
         data.name,

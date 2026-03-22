@@ -2,9 +2,7 @@
 import time
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-
+from schemas.monitor import MonitorStockCreate, MonitorStockUpdate, ToggleStock, UpdateKline
 from services.monitor_service import MonitorService
 from utils.api_helpers import current_timestamp, status_message_response, success_response
 from utils.logger import get_logger
@@ -19,29 +17,6 @@ _monitor_cache = {
     'lock': threading.Lock(),
 }
 _CACHE_TTL = 60
-
-
-class MonitorStockCreate(BaseModel):
-    code: str
-    name: str
-    timeframe: str
-    reasonable_pe_min: float = 15
-    reasonable_pe_max: float = 20
-
-
-class MonitorStockUpdate(BaseModel):
-    name: Optional[str] = None
-    timeframe: Optional[str] = None
-    reasonable_pe_min: Optional[float] = None
-    reasonable_pe_max: Optional[float] = None
-
-
-class ToggleStock(BaseModel):
-    enabled: bool = True
-
-
-class UpdateKline(BaseModel):
-    force_update: bool = False
 
 
 @monitor_router.get('')

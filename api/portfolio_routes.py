@@ -1,8 +1,7 @@
 ﻿from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
 
 from repositories.portfolio_repository import StockRepository
+from schemas.portfolio import PortfolioStockCreate, PortfolioStockUpdate
 from services.portfolio_service import PortfolioService
 from utils.api_helpers import current_timestamp, status_message_response, success_response
 from utils.logger import get_logger
@@ -10,19 +9,6 @@ from utils.logger import get_logger
 logger = get_logger('portfolio_routes')
 
 portfolio_router = APIRouter()
-
-
-class StockCreate(BaseModel):
-    code: str
-    name: str
-    cost_price: float
-    shares: int
-
-
-class StockUpdate(BaseModel):
-    name: Optional[str] = None
-    cost_price: Optional[float] = None
-    shares: Optional[int] = None
 
 
 @portfolio_router.get('')
@@ -42,14 +28,14 @@ async def get_portfolio():
 
 
 @portfolio_router.post('')
-async def create_stock(data: StockCreate):
+async def create_stock(data: PortfolioStockCreate):
     logger.info(f'POST /api/portfolio {data.code}')
     success, msg = await StockRepository.add(data.code, data.name, data.cost_price, data.shares)
     return status_message_response(success, msg)
 
 
 @portfolio_router.put('/{code}')
-async def update_stock(code: str, data: StockUpdate):
+async def update_stock(code: str, data: PortfolioStockUpdate):
     logger.info(f'PUT /api/portfolio/{code}')
     success = await StockRepository.update(code, data.name, data.cost_price, data.shares)
     return status_message_response(success, '更新成功', '更新失败')
