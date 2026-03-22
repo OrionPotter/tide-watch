@@ -1,7 +1,9 @@
+﻿import time
+
 from fastapi import APIRouter, HTTPException
+
 from services.xueqiu_service import XueqiuService
-from datetime import datetime
-import time
+from utils.api_helpers import current_timestamp, success_response
 from utils.logger import get_logger
 
 logger = get_logger('xueqiu_routes')
@@ -9,77 +11,44 @@ logger = get_logger('xueqiu_routes')
 xueqiu_router = APIRouter()
 
 
-def _clean_nan_values(obj):
-    """递归清理 NaN 值，将其转换为 None"""
-    if isinstance(obj, float):
-        if obj != obj:  # NaN 检查
-            return None
-        return obj
-    elif isinstance(obj, dict):
-        return {k: _clean_nan_values(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_clean_nan_values(item) for item in obj]
-    return obj
-
-
 @xueqiu_router.get('')
 async def get_xueqiu_data():
-    """获取所有雪球组合的调仓数据"""
     start_time = time.time()
-    logger.info("GET /api/xueqiu - 请求开始")
+    logger.info('GET /api/xueqiu')
     try:
-        # 调用异步方法
         all_data = await XueqiuService.get_all_formatted_data_async()
-
-        elapsed = time.time() - start_time
-        result = {
-            'status': 'success',
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'data': all_data
-        }
-        # 清理 NaN 值
-        result = _clean_nan_values(result)
-        logger.info(f"GET /api/xueqiu - 返回成功，组合数量: {len(all_data)}, 耗时: {elapsed:.2f}秒")
-        return result
-    except Exception as e:
-        elapsed = time.time() - start_time
-        logger.error(f"GET /api/xueqiu - 请求失败，耗时: {elapsed:.2f}秒，错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.info(f'GET /api/xueqiu completed in {time.time() - start_time:.2f}s')
+        return success_response(timestamp=current_timestamp(), data=all_data, clean_nan=True)
+    except Exception as exc:
+        logger.error(f'GET /api/xueqiu failed after {time.time() - start_time:.2f}s: {exc}')
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @xueqiu_router.get('/{cube_symbol}')
 async def get_cube_data(cube_symbol: str):
-    """获取指定雪球组合的调仓数据"""
-    logger.info(f"GET /api/xueqiu/{cube_symbol} - 请求开始")
+    logger.info(f'GET /api/xueqiu/{cube_symbol}')
     try:
-        headers = XueqiuService._get_headers()
         import aiohttp
+        from repositories.xueqiu_repository import XueqiuCubeRepository
+
+        headers = XueqiuService._get_headers()
         async with aiohttp.ClientSession(headers=headers, trust_env=False) as session:
             history = await XueqiuService._fetch_cube_data(session, cube_symbol)
 
         if history is None:
-            logger.warning(f"GET /api/xueqiu/{cube_symbol} - 获取数据失败")
             raise HTTPException(status_code=500, detail='获取数据失败')
 
-        # 获取组合名称
-        from repositories.xueqiu_repository import XueqiuCubeRepository
         cube = await XueqiuCubeRepository.get_by_symbol(cube_symbol)
         cube_name = cube.cube_name if cube else cube_symbol
-
         formatted = XueqiuService.format_rebalancing_data(cube_symbol, cube_name, history)
-
-        result = {
-            'status': 'success',
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'cube_symbol': cube_symbol,
-            'data': formatted
-        }
-        # 清理 NaN 值
-        result = _clean_nan_values(result)
-        logger.info(f"GET /api/xueqiu/{cube_symbol} - 返回成功，调仓记录数量: {len(formatted)}")
-        return result
+        return success_response(
+            timestamp=current_timestamp(),
+            cube_symbol=cube_symbol,
+            data=formatted,
+            clean_nan=True,
+        )
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"GET /api/xueqiu/{cube_symbol} - 请求失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        logger.error(f'GET /api/xueqiu/{cube_symbol} failed: {exc}')
+        raise HTTPException(status_code=500, detail=str(exc))
