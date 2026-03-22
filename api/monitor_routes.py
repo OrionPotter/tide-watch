@@ -1,7 +1,7 @@
-﻿import threading
+import threading
 import time
 
-from api.route_helpers import bool_status_response, enrich_monitor_stocks
+from api.route_helpers import bool_status_response
 from fastapi import APIRouter, HTTPException
 from schemas.monitor import MonitorStockCreate, MonitorStockUpdate, ToggleStock, UpdateKline
 from services.monitor_service import MonitorService
@@ -33,7 +33,7 @@ async def get_monitor():
             ):
                 return _monitor_cache['data']
 
-        stocks = enrich_monitor_stocks(await MonitorService.get_monitor_data())
+        stocks = await MonitorService.get_enriched_monitor_data()
         result = success_response(timestamp=current_timestamp(), stocks=stocks, clean_nan=True)
         with _monitor_cache['lock']:
             _monitor_cache['data'] = result

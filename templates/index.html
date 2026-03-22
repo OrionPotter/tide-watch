@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>投资组合 · Tidewatch</title>
+    <title>首页 · Tidewatch</title>
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
 </head>
@@ -12,7 +12,8 @@
         <section class="hero">
             <div class="hero-head">
                 <div class="hero-title">
-                    <h1>投资组合总览</h1>
+                    <h1>每日决策工作台</h1>
+                    <p>只保留最关键的重点股票和持仓信息，减少首页干扰。</p>
                 </div>
                 <div class="hero-actions">
                     <span class="last-update" id="update-time">等待更新</span>
@@ -20,11 +21,11 @@
                 </div>
             </div>
             <div class="nav-pills-bar">
-                <a class="nav-chip is-active" href="/">组合</a>
+                <a class="nav-chip is-active" href="/">首页</a>
                 <a class="nav-chip" href="/monitor">监控</a>
                 <a class="nav-chip" href="/tools">工具</a>
-                <a class="nav-chip" href="/xueqiu">雪球组合</a>
-                <a class="nav-chip" href="/admin">数据管理</a>
+                <a class="nav-chip" href="/xueqiu">参考组合</a>
+                <a class="nav-chip" href="/admin">管理</a>
             </div>
         </section>
 
@@ -32,32 +33,46 @@
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-label">总市值</div>
-                    <div class="metric-value mono" id="sum-market-value-card">-</div>
+                    <div class="metric-value mono" id="market-value">-</div>
                     <div class="metric-sub">当前持仓总价值</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">累计盈亏</div>
-                    <div class="metric-value mono" id="sum-profit-card">-</div>
+                    <div class="metric-value mono" id="profit-value">-</div>
                     <div class="metric-sub">按最新价格估算</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">股息率</div>
-                    <div class="metric-value mono" id="sum-dividend-yield-card">-</div>
-                    <div class="metric-sub">年化股息 / 总市值</div>
-                </div>
-                <div class="metric-card">
                     <div class="metric-label">年度股息</div>
-                    <div class="metric-value mono" id="sum-annual-dividend-card">-</div>
+                    <div class="metric-value mono" id="dividend-value">-</div>
                     <div class="metric-sub">按当前持仓测算</div>
                 </div>
-            </div>
-
-            <div class="section-title">
-                <div>
-                    <h3>持仓明细</h3>
+                <div class="metric-card">
+                    <div class="metric-label">股息率</div>
+                    <div class="metric-value mono" id="dividend-yield">-</div>
+                    <div class="metric-sub">年度股息 / 总市值</div>
                 </div>
             </div>
+        </section>
 
+        <section class="surface section section-feature section-single">
+            <div class="section-title">
+                <div>
+                    <h3>今日重点股票</h3>
+                    <p>优先查看的标的，按综合分排序。</p>
+                </div>
+            </div>
+            <div id="focus-cards" class="focus-list">
+                <div class="empty-state">正在加载数据...</div>
+            </div>
+        </section>
+
+        <section class="surface section section-table section-table-full">
+            <div class="section-title">
+                <div>
+                    <h3>持仓预览</h3>
+                    <p>当前持仓的价格、成本和盈亏快照。</p>
+                </div>
+            </div>
             <div class="table-wrap">
                 <table class="table-modern">
                     <thead>
@@ -65,30 +80,11 @@
                             <th>股票</th>
                             <th class="text-end">现价</th>
                             <th class="text-end">成本</th>
-                            <th class="text-end">持股数</th>
                             <th class="text-end">市值</th>
                             <th class="text-end">盈亏</th>
-                            <th class="text-end">每股分红</th>
-                            <th class="text-end">股息率</th>
-                            <th class="text-end">年度股息</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body">
-                        <tr><td colspan="9" class="empty-state">正在加载数据...</td></tr>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td>总计</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td class="text-end mono" id="sum-market-value">-</td>
-                            <td class="text-end mono" id="sum-profit">-</td>
-                            <td></td>
-                            <td class="text-end mono" id="sum-dividend-yield">-</td>
-                            <td class="text-end mono" id="sum-annual-dividend">-</td>
-                        </tr>
-                    </tfoot>
+                    <tbody id="portfolio-body"><tr><td colspan="5" class="empty-state">正在加载数据...</td></tr></tbody>
                 </table>
             </div>
         </section>
@@ -102,68 +98,110 @@
 
         function formatPercent(num) {
             if (num === undefined || num === null || Number.isNaN(num)) return '-';
-            return `${num.toFixed(2)}%`;
+            return `${(num * 100).toFixed(2)}%`;
         }
 
-        function setValue(id, value) {
-            document.getElementById(id).textContent = value;
+        function badge(text, tone) {
+            return `<span class="badge-soft ${tone}">${text}</span>`;
         }
 
-        function setProfitStyle(element, value) {
-            element.classList.remove('status-positive', 'status-negative', 'status-neutral');
-            if (value > 0) element.classList.add('status-positive');
-            else if (value < 0) element.classList.add('status-negative');
-            else element.classList.add('status-neutral');
+        function actionBadge(label) {
+            if (label === '可分批') return badge(label, 'badge-success-soft');
+            if (label === '接近买点') return badge(label, 'badge-primary-soft');
+            if (label === '风险') return badge(label, 'badge-warning-soft');
+            if (label === '高估谨慎') return badge(label, 'badge-danger-soft');
+            return badge(label || '观察', 'badge-gray-soft');
+        }
+
+        function trendBadge(label) {
+            if (label === '多头') return badge(label, 'badge-success-soft');
+            if (label === '空头') return badge(label, 'badge-danger-soft');
+            return badge(label || '未知', 'badge-gray-soft');
+        }
+
+        function valuationBadge(label) {
+            if (label === '低估') return badge(label, 'badge-success-soft');
+            if (label === '高估') return badge(label, 'badge-danger-soft');
+            return badge(label || '未知', 'badge-gray-soft');
+        }
+
+        function reasons(tags) {
+            return (tags || []).join('、') || '-';
         }
 
         async function loadData() {
             const btn = document.getElementById('refresh-btn');
-            const tbody = document.getElementById('table-body');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 加载中';
-
             try {
-                const response = await fetch('/api/portfolio');
-                const data = await response.json();
+                const response = await fetch('/api/dashboard');
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error('加载失败');
 
-                if (data.status !== 'success') throw new Error('加载失败');
+                const data = result.data || {};
+                const summary = data.portfolio_summary || {};
+                const marketValue = Number(summary.market_value) || 0;
+                const annualDividend = Number(summary.annual_dividend) || 0;
+                const dividendYield = marketValue > 0 ? annualDividend / marketValue : null;
 
-                tbody.innerHTML = '';
-                data.rows.forEach(row => {
-                    const profitClass = row.profit > 0 ? 'status-positive' : row.profit < 0 ? 'status-negative' : 'status-neutral';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${row.name}</strong><div class="text-muted small">${row.code}</div></td>
-                        <td class="text-end mono">${formatMoney(row.current_price)}</td>
-                        <td class="text-end mono">${formatMoney(row.cost_price)}</td>
-                        <td class="text-end mono">${row.shares.toLocaleString()}</td>
-                        <td class="text-end mono fw-bold">${formatMoney(row.market_value)}</td>
-                        <td class="text-end mono fw-bold ${profitClass}">${formatMoney(row.profit)}</td>
-                        <td class="text-end mono">${formatMoney(row.dividend_per_share)}</td>
-                        <td class="text-end mono">${formatPercent(row.dividend_yield)}</td>
-                        <td class="text-end mono">${formatMoney(row.annual_dividend_income)}</td>`;
-                    tbody.appendChild(tr);
-                });
+                document.getElementById('market-value').textContent = formatMoney(summary.market_value);
+                document.getElementById('profit-value').textContent = formatMoney(summary.profit);
+                document.getElementById('dividend-value').textContent = formatMoney(summary.annual_dividend);
+                document.getElementById('dividend-yield').textContent = formatPercent(dividendYield);
+                document.getElementById('update-time').textContent = `最后更新：${result.timestamp}`;
 
-                setValue('sum-market-value', formatMoney(data.summary.market_value));
-                setValue('sum-profit', formatMoney(data.summary.profit));
-                setValue('sum-dividend-yield', formatPercent(data.summary.dividend_yield));
-                setValue('sum-annual-dividend', formatMoney(data.summary.annual_dividend));
-                setValue('sum-market-value-card', formatMoney(data.summary.market_value));
-                setValue('sum-profit-card', formatMoney(data.summary.profit));
-                setValue('sum-dividend-yield-card', formatPercent(data.summary.dividend_yield));
-                setValue('sum-annual-dividend-card', formatMoney(data.summary.annual_dividend));
-                document.getElementById('update-time').textContent = `最后更新：${data.timestamp}`;
-
-                setProfitStyle(document.getElementById('sum-profit'), data.summary.profit);
-                setProfitStyle(document.getElementById('sum-profit-card'), data.summary.profit);
+                renderFocusCards(data.focus_stocks || []);
+                renderPortfolio(data.portfolio_rows || []);
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state text-danger">数据加载失败，请稍后重试。</td></tr>';
+                document.getElementById('focus-cards').innerHTML = '<div class="empty-state text-danger">首页数据加载失败</div>';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '刷新数据';
             }
+        }
+
+        function renderFocusCards(items) {
+            const container = document.getElementById('focus-cards');
+            if (!items.length) {
+                container.innerHTML = '<div class="empty-state">暂无重点股票</div>';
+                return;
+            }
+            container.innerHTML = items.slice(0, 6).map(stock => `
+                <article class="focus-card ${stock.risk_level === 'high' ? 'is-danger' : stock.action_label === '可分批' ? 'is-positive' : ''}">
+                    <div class="focus-card-head">
+                        <div>
+                            <h4>${stock.name}</h4>
+                            <div class="text-muted small">${stock.code}</div>
+                        </div>
+                        <div class="focus-score mono">${stock.score ?? '-'}</div>
+                    </div>
+                    <div class="focus-card-meta">
+                        ${actionBadge(stock.action_label)}
+                        ${trendBadge(stock.trend)}
+                        ${valuationBadge(stock.valuation_status)}
+                    </div>
+                    <div class="focus-card-price mono">现价 ${formatMoney(stock.current_price)}</div>
+                    <div class="focus-card-reasons">${reasons(stock.reason_tags)}</div>
+                </article>
+            `).join('');
+        }
+
+        function renderPortfolio(items) {
+            const tbody = document.getElementById('portfolio-body');
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无持仓数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(row => `
+                <tr>
+                    <td><strong>${row.name}</strong><div class="text-muted small">${row.code}</div></td>
+                    <td class="text-end mono">${formatMoney(row.current_price)}</td>
+                    <td class="text-end mono">${formatMoney(row.cost_price)}</td>
+                    <td class="text-end mono">${formatMoney(row.market_value)}</td>
+                    <td class="text-end mono ${row.profit > 0 ? 'status-positive' : row.profit < 0 ? 'status-negative' : 'status-neutral'}">${formatMoney(row.profit)}</td>
+                </tr>
+            `).join('');
         }
 
         document.addEventListener('DOMContentLoaded', loadData);

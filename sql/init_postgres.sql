@@ -94,6 +94,19 @@ CREATE TABLE IF NOT EXISTS xueqiu_cubes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS alerts (
+    id SERIAL PRIMARY KEY,
+    stock_code TEXT,
+    stock_name TEXT,
+    alert_type TEXT NOT NULL,
+    alert_title TEXT NOT NULL,
+    alert_message TEXT NOT NULL,
+    trigger_reason TEXT,
+    channel TEXT NOT NULL DEFAULT 'system',
+    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'read', 'archived')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 创建股票代码表（沪深京A股）
 CREATE TABLE IF NOT EXISTS stock_list (
     code TEXT PRIMARY KEY,
@@ -132,6 +145,9 @@ CREATE INDEX IF NOT EXISTS idx_update_log_status ON kline_update_log(status);
 -- xueqiu_cubes表索引
 CREATE INDEX IF NOT EXISTS idx_xueqiu_cube_symbol ON xueqiu_cubes(cube_symbol);
 CREATE INDEX IF NOT EXISTS idx_xueqiu_enabled ON xueqiu_cubes(enabled);
+CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
+CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
+CREATE INDEX IF NOT EXISTS idx_alerts_type ON alerts(alert_type);
 
 -- stock_list表索引
 CREATE INDEX IF NOT EXISTS idx_stock_list_name ON stock_list(name);

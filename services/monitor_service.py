@@ -1,5 +1,7 @@
-﻿from repositories.monitor_repository import MonitorStockRepository
+from repositories.monitor_repository import MonitorStockRepository
+from repositories.portfolio_repository import StockRepository
 from services.data_service import DataService
+from services.monitor_scoring_service import MonitorScoringService
 from services.service_helpers import clear_proxy_env, success_or_failure
 
 clear_proxy_env()
@@ -11,6 +13,56 @@ class MonitorService:
     @staticmethod
     async def get_monitor_data():
         return await DataService.get_monitor_data()
+
+    @staticmethod
+    async def get_enriched_monitor_data():
+        stocks = await DataService.get_monitor_data()
+        holdings = await StockRepository.get_all()
+        holding_codes = {stock.code for stock in holdings}
+
+        for stock in stocks:
+            min_price, max_price = MonitorService.calculate_reasonable_price(
+                stock.get('eps_forecast'),
+                stock.get('reasonable_pe_min'),
+                stock.get('reasonable_pe_max'),
+            )
+            stock['reasonable_price_min'] = min_price
+            stock['reasonable_price_max'] = max_price
+            stock['valuation_status'] = MonitorService.check_valuation_status(
+                stock.get('current_price'),
+                stock.get('eps_forecast'),
+                stock.get('reasonable_pe_min'),
+                stock.get('reasonable_pe_max'),
+            )
+            stock['technical_status'] = MonitorService.check_technical_status(
+                stock.get('current_price'),
+                stock.get('ema144'),
+                stock.get('ema188'),
+            )
+            stock['trend'] = MonitorService.check_trend(
+                {
+                    'ema5': stock.get('ema5'),
+                    'ema10': stock.get('ema10'),
+                    'ema20': stock.get('ema20'),
+                    'ema30': stock.get('ema30'),
+                    'ema60': stock.get('ema60'),
+                    'ema7': stock.get('ema7'),
+                    'ema21': stock.get('ema21'),
+                    'ema42': stock.get('ema42'),
+                },
+                stock.get('timeframe'),
+            )
+            MonitorScoringService.score_stock(stock, holding_codes)
+
+        stocks.sort(
+            key=lambda item: (
+                item.get('score', 0),
+                item.get('is_holding', False),
+                item.get('current_price', 0),
+            ),
+            reverse=True,
+        )
+        return stocks
 
     @staticmethod
     async def get_all_monitor_stocks():

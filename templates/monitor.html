@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,8 @@
         <section class="hero">
             <div class="hero-head">
                 <div class="hero-title">
-                    <h1>加仓监控看板</h1>
+                    <h1>监控看板</h1>
+                    <p>按照综合分、估值、技术和趋势优先级查看观察池。</p>
                 </div>
                 <div class="hero-actions">
                     <span class="last-update" id="update-time">等待更新</span>
@@ -21,42 +22,52 @@
                 </div>
             </div>
             <div class="nav-pills-bar">
-                <a class="nav-chip" href="/">组合</a>
+                <a class="nav-chip" href="/">首页</a>
                 <a class="nav-chip is-active" href="/monitor">监控</a>
                 <a class="nav-chip" href="/tools">工具</a>
-                <a class="nav-chip" href="/xueqiu">雪球组合</a>
-                <a class="nav-chip" href="/admin">数据管理</a>
+                <a class="nav-chip" href="/xueqiu">参考组合</a>
+                <a class="nav-chip" href="/admin">管理</a>
             </div>
         </section>
 
         <section class="surface section">
-            <div class="section-title"><div><h3>监控列表</h3></div></div>
+            <div class="toolbar-row">
+                <div class="filter-chips" id="filter-chips">
+                    <button class="chip-btn is-active" data-filter="all">全部</button>
+                    <button class="chip-btn" data-filter="holding">持仓</button>
+                    <button class="chip-btn" data-filter="buy">接近买点</button>
+                    <button class="chip-btn" data-filter="risk">风险</button>
+                </div>
+                <div class="toolbar-summary" id="summary-text">正在加载监控数据...</div>
+            </div>
+        </section>
+
+        <section class="surface section">
             <div class="table-wrap">
                 <table class="table-modern">
                     <thead>
                         <tr>
                             <th>股票</th>
                             <th class="text-end">现价</th>
-                            <th class="text-end">估值 PE</th>
-                            <th class="text-end">EPS 预测</th>
-                            <th class="text-end">合理价格</th>
-                            <th class="text-center">估值状态</th>
-                            <th class="text-center">周期</th>
+                            <th class="text-end">合理区间</th>
+                            <th class="text-center">估值</th>
                             <th class="text-center">趋势</th>
-                            <th class="text-end">进场位 1</th>
-                            <th class="text-end">进场位 2</th>
-                            <th class="text-center">技术状态</th>
+                            <th class="text-center">技术</th>
+                            <th class="text-center">动作</th>
+                            <th class="text-end">评分</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body">
-                        <tr><td colspan="11" class="empty-state">正在加载监控数据...</td></tr>
-                    </tbody>
+                    <tbody id="monitor-body"><tr><td colspan="8" class="empty-state">正在加载数据...</td></tr></tbody>
                 </table>
             </div>
         </section>
     </div>
 
+    <script src="/static/ui.js"></script>
     <script>
+        let allRows = [];
+        let activeFilter = 'all';
+
         function formatMoney(num) {
             if (num === undefined || num === null || Number.isNaN(num)) return '-';
             return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -66,106 +77,112 @@
             return `<span class="badge-soft ${tone}">${text}</span>`;
         }
 
-        function getTrendBadge(stock) {
-            if (stock.timeframe === '1d' && stock.ema5 && stock.ema10 && stock.ema20) {
-                if (stock.ema5 > stock.ema10 && stock.ema10 > stock.ema20) return badge('多头', 'badge-success-soft');
-                if (stock.ema5 < stock.ema10 && stock.ema10 < stock.ema20) return badge('空头', 'badge-danger-soft');
-                return badge('震荡', 'badge-gray-soft');
+        function valuationBadge(label) {
+            if (label === '低估') return badge(label, 'badge-success-soft');
+            if (label === '高估') return badge(label, 'badge-danger-soft');
+            return badge(label || '中性', 'badge-gray-soft');
+        }
+
+        function trendBadge(label) {
+            if (label === '多头') return badge(label, 'badge-success-soft');
+            if (label === '空头') return badge(label, 'badge-danger-soft');
+            return badge(label || '震荡', 'badge-gray-soft');
+        }
+
+        function actionBadge(label) {
+            if (label === '可分批') return badge(label, 'badge-success-soft');
+            if (label === '接近买点') return badge(label, 'badge-primary-soft');
+            if (label === '风险') return badge(label, 'badge-warning-soft');
+            if (label === '高估谨慎') return badge(label, 'badge-danger-soft');
+            return badge(label || '观察', 'badge-gray-soft');
+        }
+
+        function filterRows(items) {
+            if (activeFilter === 'all') return items;
+            if (activeFilter === 'holding') return items.filter(item => item.is_holding);
+            if (activeFilter === 'buy') return items.filter(item => ['可分批', '接近买点'].includes(item.action_label));
+            if (activeFilter === 'risk') return items.filter(item => item.risk_level === 'high' || item.action_label === '风险');
+            return items;
+        }
+
+        function renderSummary(items) {
+            document.getElementById('summary-text').textContent = `共 ${items.length} 只监控股票`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('monitor-body');
+            const items = filterRows(allRows);
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">当前筛选条件下暂无数据</td></tr>';
+                return;
             }
-            if (stock.timeframe === '2d' && stock.ema10 && stock.ema30 && stock.ema60) {
-                if (stock.ema10 > stock.ema30 && stock.ema30 > stock.ema60) return badge('多头', 'badge-success-soft');
-                if (stock.ema10 < stock.ema30 && stock.ema30 < stock.ema60) return badge('空头', 'badge-danger-soft');
-                return badge('震荡', 'badge-gray-soft');
-            }
-            if (stock.timeframe === '3d' && stock.ema7 && stock.ema21 && stock.ema42) {
-                if (stock.ema7 > stock.ema21 && stock.ema21 > stock.ema42) return badge('多头', 'badge-success-soft');
-                if (stock.ema7 < stock.ema21 && stock.ema21 < stock.ema42) return badge('空头', 'badge-danger-soft');
-                return badge('震荡', 'badge-gray-soft');
-            }
-            return badge('未知', 'badge-gray-soft');
+            tbody.innerHTML = items.map(item => `
+                <tr>
+                    <td><strong>${item.name}</strong><div class="text-muted small">${item.code}</div></td>
+                    <td class="text-end mono">${formatMoney(item.current_price)}</td>
+                    <td class="text-end mono">${formatMoney(item.reasonable_price_min)} - ${formatMoney(item.reasonable_price_max)}</td>
+                    <td class="text-center">${valuationBadge(item.valuation_status)}</td>
+                    <td class="text-center">${trendBadge(item.trend)}</td>
+                    <td class="text-center">${badge(item.technical_status || '无信号', 'badge-gray-soft')}</td>
+                    <td class="text-center">${actionBadge(item.action_label)}</td>
+                    <td class="text-end mono">${item.score ?? '-'}</td>
+                </tr>
+            `).join('');
         }
 
         async function loadData() {
             const btn = document.getElementById('refresh-btn');
-            const tbody = document.getElementById('table-body');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 加载中';
-
             try {
                 const response = await fetch('/api/monitor');
-                const data = await response.json();
-                if (data.status !== 'success') throw new Error('加载失败');
-
-                const timeframeMap = { '1d': '日线', '2d': '2日线', '3d': '3日线' };
-                tbody.innerHTML = '';
-
-                data.stocks.forEach(stock => {
-                    const valuationBadge = stock.valuation_status === '低估'
-                        ? badge('低估', 'badge-success-soft')
-                        : stock.valuation_status === '高估'
-                            ? badge('高估', 'badge-danger-soft')
-                            : stock.valuation_status === '正常'
-                                ? badge('正常', 'badge-gray-soft')
-                                : badge('未知', 'badge-gray-soft');
-
-                    const technicalBadge = stock.technical_status === '加仓'
-                        ? badge('加仓', 'badge-success-soft')
-                        : stock.technical_status === '破位'
-                            ? badge('破位', 'badge-warning-soft')
-                            : badge('无信号', 'badge-gray-soft');
-
-                    const minPrice = stock.eps_forecast ? stock.eps_forecast * (stock.reasonable_pe_min || 15) : null;
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${stock.name}</strong><div class="text-muted small">${stock.code}</div></td>
-                        <td class="text-end mono">${formatMoney(stock.current_price)}</td>
-                        <td class="text-end mono">${stock.reasonable_pe_min || 15} - ${stock.reasonable_pe_max || 20}</td>
-                        <td class="text-end mono">${stock.eps_forecast ? formatMoney(stock.eps_forecast) : '-'}</td>
-                        <td class="text-end mono">${minPrice ? formatMoney(minPrice) : '-'}</td>
-                        <td class="text-center">${valuationBadge}</td>
-                        <td class="text-center">${badge(timeframeMap[stock.timeframe] || stock.timeframe, 'badge-primary-soft')}</td>
-                        <td class="text-center">${getTrendBadge(stock)}</td>
-                        <td class="text-end mono">${formatMoney(stock.ema144)}</td>
-                        <td class="text-end mono">${formatMoney(stock.ema188)}</td>
-                        <td class="text-center">${technicalBadge}</td>`;
-                    tbody.appendChild(tr);
-                });
-
-                document.getElementById('update-time').textContent = `最后更新：${data.timestamp}`;
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error('加载失败');
+                allRows = result.stocks || [];
+                renderSummary(allRows);
+                renderTable();
+                document.getElementById('update-time').textContent = `最后更新：${result.timestamp}`;
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="11" class="empty-state text-danger">监控数据加载失败。</td></tr>';
-                showToast('监控数据加载失败', 'error');
+                document.getElementById('monitor-body').innerHTML = '<tr><td colspan="8" class="empty-state text-danger">监控数据加载失败</td></tr>';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '刷新数据';
             }
         }
 
+        document.querySelectorAll('.chip-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                activeFilter = button.dataset.filter;
+                document.querySelectorAll('.chip-btn').forEach(item => item.classList.toggle('is-active', item === button));
+                renderTable();
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', loadData);
         document.getElementById('refresh-btn').addEventListener('click', loadData);
-        document.getElementById('update-kline-btn').addEventListener('click', async function () {
-            const btn = this;
-            const originalText = btn.innerHTML;
+        document.getElementById('update-kline-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('update-kline-btn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 更新中';
             try {
                 const response = await fetch('/api/monitor/update-kline', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ force_update: false })
+                    body: JSON.stringify({ force_update: true })
                 });
                 const result = await response.json();
-                if (result.status === 'success') showToast('K 线更新任务已启动，请稍后刷新页面查看结果。', 'success');
-                else showToast(`更新失败：${result.message}`, 'error');
+                if (result.status !== 'success') throw new Error('更新失败');
+                showToast('K 线更新任务已启动', 'success');
+                await loadData();
             } catch (error) {
-                showToast('更新失败，请检查网络连接。', 'error');
+                console.error(error);
+                showToast('K 线更新失败', 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = originalText;
+                btn.innerHTML = '更新 K 线';
             }
         });
     </script>
-    <script src="/static/ui.js"></script>
 </body>
 </html>
