@@ -122,7 +122,7 @@ AUTO_UPDATE_INDUSTRY_BOARD=true
 初始化方式示例：
 
 ```sql
-\i sql/init_postgres.sql
+sql/init_postgres.sql
 ```
 
 脚本当前会创建这些核心表：
