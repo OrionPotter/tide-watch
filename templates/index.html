@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首页 · Tidewatch</title>
+    <title>首页 - Tidewatch</title>
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
 </head>
@@ -34,7 +34,7 @@
                 <div class="metric-card">
                     <div class="metric-label">总市值</div>
                     <div class="metric-value mono" id="market-value">-</div>
-                    <div class="metric-sub">当前持仓总价值</div>
+                    <div class="metric-sub">当前持仓总估值</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">累计盈亏</div>
@@ -70,7 +70,7 @@
             <div class="section-title">
                 <div>
                     <h3>持仓预览</h3>
-                    <p>当前持仓的价格、成本和盈亏快照。</p>
+                    <p>当前持仓的价格、成本、股息率和盈亏快照。</p>
                 </div>
             </div>
             <div class="table-wrap">
@@ -80,11 +80,14 @@
                             <th>股票</th>
                             <th class="text-end">现价</th>
                             <th class="text-end">成本</th>
+                            <th class="text-end">股息率</th>
                             <th class="text-end">市值</th>
                             <th class="text-end">盈亏</th>
                         </tr>
                     </thead>
-                    <tbody id="portfolio-body"><tr><td colspan="5" class="empty-state">正在加载数据...</td></tr></tbody>
+                    <tbody id="portfolio-body">
+                        <tr><td colspan="6" class="empty-state">正在加载数据...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </section>
@@ -93,12 +96,17 @@
     <script>
         function formatMoney(num) {
             if (num === undefined || num === null || Number.isNaN(num)) return '-';
-            return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return Number(num).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function formatPercent(num) {
             if (num === undefined || num === null || Number.isNaN(num)) return '-';
             return `${(num * 100).toFixed(2)}%`;
+        }
+
+        function formatDisplayPercent(num) {
+            if (num === undefined || num === null || Number.isNaN(num)) return '-';
+            return `${Number(num).toFixed(2)}%`;
         }
 
         function badge(text, tone) {
@@ -155,6 +163,7 @@
             } catch (error) {
                 console.error(error);
                 document.getElementById('focus-cards').innerHTML = '<div class="empty-state text-danger">首页数据加载失败</div>';
+                document.getElementById('portfolio-body').innerHTML = '<tr><td colspan="6" class="empty-state text-danger">持仓数据加载失败</td></tr>';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '刷新数据';
@@ -190,7 +199,7 @@
         function renderPortfolio(items) {
             const tbody = document.getElementById('portfolio-body');
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无持仓数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无持仓数据</td></tr>';
                 return;
             }
             tbody.innerHTML = items.map(row => `
@@ -198,6 +207,7 @@
                     <td><strong>${row.name}</strong><div class="text-muted small">${row.code}</div></td>
                     <td class="text-end mono">${formatMoney(row.current_price)}</td>
                     <td class="text-end mono">${formatMoney(row.cost_price)}</td>
+                    <td class="text-end mono">${formatDisplayPercent(row.dividend_yield)}</td>
                     <td class="text-end mono">${formatMoney(row.market_value)}</td>
                     <td class="text-end mono ${row.profit > 0 ? 'status-positive' : row.profit < 0 ? 'status-negative' : 'status-neutral'}">${formatMoney(row.profit)}</td>
                 </tr>

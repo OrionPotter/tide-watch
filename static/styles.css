@@ -214,6 +214,12 @@ body {
   border-bottom: 1px solid #eef2f7;
   vertical-align: middle;
 }
+.table-subtext {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
 .table-modern tbody tr:hover { background: #f8fbff; }
 .table-modern tbody tr:last-child td { border-bottom: none; }
 .table-modern tfoot td {
