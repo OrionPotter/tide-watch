@@ -6,11 +6,12 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.router_registry import register_api_routers
-from utils.db import close_db_pool, init_db_pool
+from utils.db import DatabaseUnavailableError, close_db_pool, init_db_pool
 from utils.logger import get_logger
 from utils.template_renderer import render_page
 
@@ -20,8 +21,11 @@ logger = get_logger('app')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db_pool()
-    logger.info('数据库连接池已初始化')
+    try:
+        await init_db_pool()
+        logger.info('数据库连接池已初始化')
+    except DatabaseUnavailableError:
+        logger.warning('数据库不可用，服务将以降级模式启动')
 
     start_background_tasks()
 
@@ -102,6 +106,13 @@ def create_app() -> FastAPI:
             )
 
         return response
+
+    @app.exception_handler(DatabaseUnavailableError)
+    async def handle_database_unavailable(_: Request, exc: DatabaseUnavailableError):
+        return JSONResponse(
+            status_code=503,
+            content={'detail': str(exc)},
+        )
 
     register_api_routers(app)
     register_page_routes(app)
