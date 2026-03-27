@@ -63,6 +63,7 @@ async def lifespan(app: FastAPI):
 PAGE_TEMPLATES = {
     '/': 'index.html',
     '/admin': 'admin.html',
+    '/analysis': 'analysis.html',
     '/learn': 'learn.html',
     '/monitor': 'monitor.html',
     '/tools': 'tools.html',

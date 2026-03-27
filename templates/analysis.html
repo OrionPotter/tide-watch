@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析 · Tidewatch</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="app-shell">
+    <section class="hero">
+        <div class="hero-head">
+            <div class="hero-title">
+                <h1>价格行为分析</h1>
+                <p>基于 K 线结构和 OpenAI 协议模型生成分析，并支持入库查看。</p>
+            </div>
+        </div>
+        <div class="nav-pills-bar">
+            <a class="nav-chip" href="/">首页</a>
+            <a class="nav-chip" href="/monitor">监控</a>
+            <a class="nav-chip" href="/tools">工具</a>
+            <a class="nav-chip" href="/xueqiu">组合</a>
+            <a class="nav-chip is-active" href="/analysis">分析</a>
+            <a class="nav-chip" href="/learn">学习</a>
+            <a class="nav-chip" href="/admin">管理</a>
+        </div>
+    </section>
+
+    <section class="dashboard-grid dashboard-grid-primary">
+        <section class="surface section section-sidebar">
+            <div class="section-title">
+                <div><h3>发起分析</h3></div>
+            </div>
+            <form id="analysis-form" class="form-panel">
+                <div class="mb-3">
+                    <label class="form-label" for="analysis-code">股票代码</label>
+                    <input class="form-control" id="analysis-code" value="600000" placeholder="如 600000 或 sh600000">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="analysis-period">周期</label>
+                    <select class="form-select" id="analysis-period">
+                        <option value="daily">日线</option>
+                        <option value="weekly">周线</option>
+                        <option value="monthly">月线</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="analysis-count">K线数量</label>
+                    <input class="form-control" id="analysis-count" type="number" min="20" max="250" value="60">
+                </div>
+                <button class="btn btn-primary w-100" type="submit" id="analysis-submit">开始分析</button>
+            </form>
+        </section>
+
+        <section class="surface section section-table">
+            <div class="section-title">
+                <div><h3>历史记录</h3></div>
+            </div>
+            <div id="analysis-history" class="analysis-history">
+                <div class="empty-state">正在加载历史记录...</div>
+            </div>
+        </section>
+    </section>
+
+    <section class="surface section section-feature">
+        <div class="section-title">
+            <div><h3>分析详情</h3></div>
+            <div class="toolbar-summary" id="analysis-meta">请选择一条记录</div>
+        </div>
+        <article id="analysis-content" class="markdown-body">
+            <div class="empty-state">发起分析后将在这里展示结果</div>
+        </article>
+    </section>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+async function loadHistory() {
+    const container = document.getElementById('analysis-history');
+    try {
+        const response = await fetch('/api/analysis');
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error('加载失败');
+        }
+        const reports = (result.data && result.data.reports) || [];
+        if (!reports.length) {
+            container.innerHTML = '<div class="empty-state">暂无分析记录</div>';
+            return;
+        }
+        container.innerHTML = reports.map(report => `
+            <button class="analysis-history-item" type="button" data-id="${report.id}">
+                <div class="analysis-history-head">
+                    <strong>${report.stock_name || report.code}</strong>
+                    <span class="mono">${report.code}</span>
+                </div>
+                <div class="analysis-history-meta">
+                    <span>${report.period}</span>
+                    <span>${report.kline_count} 根</span>
+                    <span>${report.model_name}</span>
+                </div>
+                <div class="analysis-history-time">${report.created_at}</div>
+            </button>
+        `).join('');
+        container.querySelectorAll('[data-id]').forEach(el => {
+            el.addEventListener('click', () => loadReport(el.dataset.id));
+        });
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<div class="empty-state text-danger">历史记录加载失败</div>';
+    }
+}
+
+async function loadReport(id) {
+    const content = document.getElementById('analysis-content');
+    const meta = document.getElementById('analysis-meta');
+    try {
+        const response = await fetch(`/api/analysis/${id}`);
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error('加载失败');
+        }
+        const report = result.data.report;
+        meta.textContent = `${report.stock_name || report.code} / ${report.period} / ${report.kline_count} 根 / ${report.model_name}`;
+        content.innerHTML = marked.parse(report.analysis_markdown || '');
+    } catch (error) {
+        console.error(error);
+        meta.textContent = '加载失败';
+        content.innerHTML = '<div class="empty-state text-danger">分析详情加载失败</div>';
+    }
+}
+
+document.getElementById('analysis-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = document.getElementById('analysis-submit');
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 分析中';
+    try {
+        const payload = {
+            code: document.getElementById('analysis-code').value.trim(),
+            period: document.getElementById('analysis-period').value,
+            count: Number(document.getElementById('analysis-count').value),
+        };
+        const response = await fetch('/api/analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error(result.detail || '分析失败');
+        }
+        await loadHistory();
+        await loadReport(result.data.id);
+    } catch (error) {
+        console.error(error);
+        document.getElementById('analysis-meta').textContent = '分析失败';
+        document.getElementById('analysis-content').innerHTML = `<div class="empty-state text-danger">${error.message || '分析失败'}</div>`;
+    } finally {
+        button.disabled = false;
+        button.textContent = '开始分析';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadHistory);
+</script>
+</body>
+</html>

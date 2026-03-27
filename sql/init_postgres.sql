@@ -373,3 +373,22 @@ COMMENT ON COLUMN industry_board_history.turnover_trend_3d IS '3日换手率趋�
 -- ============================================
 ALTER TABLE stock_list ADD COLUMN IF NOT EXISTS last_update TIMESTAMP;
 CREATE INDEX IF NOT EXISTS idx_stock_list_last_update ON stock_list(last_update);
+
+-- ============================================
+-- 价格行为分析报告
+-- ============================================
+CREATE TABLE IF NOT EXISTS analysis_reports (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) NOT NULL,
+    stock_name VARCHAR(100),
+    period VARCHAR(20) NOT NULL,
+    kline_count INTEGER NOT NULL,
+    model_name VARCHAR(100) NOT NULL,
+    prompt_text TEXT NOT NULL,
+    input_payload JSONB NOT NULL,
+    analysis_markdown TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_analysis_reports_created_at ON analysis_reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analysis_reports_code ON analysis_reports(code);

@@ -647,6 +647,43 @@ body {
   background: #eff6ff;
   color: #1e3a8a;
 }
+.analysis-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.analysis-history-item {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  text-align: left;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.analysis-history-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15,23,42,.08);
+}
+.analysis-history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.analysis-history-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.analysis-history-time {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
 
 @media (max-width: 768px) {
   .app-shell { width: min(100% - 20px, 100%); }
