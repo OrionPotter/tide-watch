@@ -392,3 +392,13 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
 
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_created_at ON analysis_reports(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_code ON analysis_reports(code);
+
+CREATE TABLE IF NOT EXISTS prompt_assets (
+    asset_key VARCHAR(255) PRIMARY KEY,
+    category VARCHAR(50) NOT NULL,
+    source_path TEXT NOT NULL,
+    content TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_prompt_assets_category ON prompt_assets(category);

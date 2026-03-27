@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 
 import aiohttp
 import pandas as pd
@@ -19,6 +20,7 @@ logger = get_logger('price_action_service')
 class PriceActionService:
     EMA_WARMUP = 40
     VALID_PERIODS = {'daily': '101', 'weekly': '102', 'monthly': '103'}
+    SKILL_ROOT = Path(r'C:\Users\86158\.openclaw\workspace\skills\price-action')
 
     @staticmethod
     def _build_session() -> requests.Session:
@@ -176,6 +178,66 @@ class PriceActionService:
         }
 
     @staticmethod
+    async def sync_skill_assets_to_db() -> None:
+        root = PriceActionService.SKILL_ROOT
+        if not root.exists():
+            logger.warning(f'Price action skill root not found: {root}')
+            return
+
+        files = [path for path in root.rglob('*') if path.is_file() and '.git' not in path.parts]
+        for path in files:
+            category = 'skill'
+            if 'references' in path.parts:
+                category = 'reference'
+            elif 'scripts' in path.parts:
+                category = 'script'
+            asset_key = str(path.relative_to(root)).replace('\\', '/')
+            content = path.read_text(encoding='utf-8', errors='replace')
+            await AnalysisRepository.upsert_prompt_asset(
+                asset_key=asset_key,
+                category=category,
+                source_path=str(path),
+                content=content,
+            )
+
+    @staticmethod
+    async def _load_prompt_layers() -> tuple[str, str]:
+        await PriceActionService.sync_skill_assets_to_db()
+        assets = await AnalysisRepository.list_prompt_assets()
+        skill_docs = [item for item in assets if item['category'] == 'skill']
+        reference_docs = [item for item in assets if item['category'] == 'reference']
+
+        system_prompt = """你是 Tidewatch 内置的 A 股价格行为分析引擎。
+
+你的职责：
+1. 严格遵循数据库中提供的 price-action skill 文档。
+2. 分析对象仅限 A 股，且只给做多方向建议。
+3. 做空模式只用于风险识别、减仓、卖出时机判断。
+4. 所有推断必须基于输入 K 线数据和规则文档，不得擅自发挥。
+5. 输出必须是专业、克制、结构化的中文 Markdown。
+"""
+        if skill_docs:
+            system_prompt += "\n\n以下是必须遵循的 skill 原文：\n\n"
+            system_prompt += "\n\n".join(
+                f"## 文件: {item['asset_key']}\n{item['content']}" for item in skill_docs
+            )
+
+        analysis_rubric = """以下是分析 rubric。你必须完整吸收并执行，不要省略条目：
+- 先判断市场周期，再判断 K 线，再做结构，再找机会，再做风控
+- 必须考虑位置、上下文、量价配合，而不是孤立看单根 K 线
+- 置信度低于 3 星时，应优先给出观望
+- 如果没有清晰做多机会，也必须输出完整结构并明确写观望
+- 所有 references 文档都是强约束，不是可选建议
+"""
+        if reference_docs:
+            analysis_rubric += "\n\n以下是 references 全文：\n\n"
+            analysis_rubric += "\n\n".join(
+                f"## 文件: {item['asset_key']}\n{item['content']}" for item in reference_docs
+            )
+
+        return system_prompt, analysis_rubric
+
+    @staticmethod
     async def _fetch_kline_from_db(code: str, count: int, period: str) -> dict | None:
         for candidate in PriceActionService._normalize_code_candidates(code):
             df = await KlineRepository.get_by_code(candidate, limit=max(count * 6, 300))
@@ -328,34 +390,20 @@ class PriceActionService:
         return await asyncio.to_thread(PriceActionService._fetch_kline_sync, code, count, period)
 
     @staticmethod
-    def _build_prompt(kline_data: dict) -> str:
-        return f"""你是 A 股价格行为分析师，分析框架参考 Al Brooks Price Action。
+    async def _build_prompt_layers(kline_data: dict) -> tuple[str, str, str]:
+        system_prompt, analysis_rubric = await PriceActionService._load_prompt_layers()
+        user_data = f"""请分析以下 A 股 K 线数据。
 
-硬性要求：
-1. 只给 A 股做多方向建议，不提供做空建议。
-2. 必须基于提供的 K 线数据判断：市场周期、关键 K 线、结构、支撑阻力、入场机会、风险点。
-3. 如果没有清晰做多机会，要明确写“观望”，不要勉强给买入建议。
-4. 所有结论必须和提供的数据对应，不要空泛。
-5. 用中文输出，输出为 Markdown。
+输出要求：
+1. 严格遵循 system prompt 和 analysis rubric。
+2. 只给做多方向结论，做空模式仅用于识别风险、减仓、卖出时机。
+3. 所有结论都要落到具体结构、价位、条件和失效条件。
+4. 输出使用 Markdown。
 
-请严格按以下结构输出：
-# {kline_data['name']}（{kline_data['code']}）价格行为分析
-## 1. 当前市场周期
-## 2. 关键K线与结构判断
-## 3. 支撑位与阻力位
-## 4. 做多机会评估
-## 5. 风险提示与无效条件
-## 6. 操作建议
-
-操作建议部分必须包含：
-- 结论：做多 / 观望 / 减仓观察
-- 理由：
-- 关注价位：
-- 失效条件：
-
-下面是待分析的 K 线 JSON：
+待分析数据：
 {json.dumps(kline_data, ensure_ascii=False, indent=2)}
 """
+        return system_prompt, analysis_rubric, user_data
 
     @staticmethod
     def _build_base_url_candidates(base_url: str) -> list[str]:
@@ -370,15 +418,24 @@ class PriceActionService:
         return deduped
 
     @staticmethod
-    async def _call_llm_once(base_url: str, api_style: str, model_name: str, api_key: str, prompt: str) -> tuple[str, str]:
+    async def _call_llm_once(
+        base_url: str,
+        api_style: str,
+        model_name: str,
+        api_key: str,
+        system_prompt: str,
+        analysis_rubric: str,
+        user_data: str,
+    ) -> tuple[str, str]:
         if api_style == 'responses':
             url = f'{base_url}/responses'
             payload = {
                 'model': model_name,
                 'temperature': 0.2,
                 'input': [
-                    {'role': 'system', 'content': [{'type': 'text', 'text': '你是专业的 A 股价格行为分析师。'}]},
-                    {'role': 'user', 'content': [{'type': 'text', 'text': prompt}]},
+                    {'role': 'system', 'content': [{'type': 'text', 'text': system_prompt}]},
+                    {'role': 'developer', 'content': [{'type': 'text', 'text': analysis_rubric}]},
+                    {'role': 'user', 'content': [{'type': 'text', 'text': user_data}]},
                 ],
             }
         else:
@@ -387,8 +444,9 @@ class PriceActionService:
                 'model': model_name,
                 'temperature': 0.2,
                 'messages': [
-                    {'role': 'system', 'content': '你是专业的 A 股价格行为分析师。'},
-                    {'role': 'user', 'content': prompt},
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'developer', 'content': analysis_rubric},
+                    {'role': 'user', 'content': user_data},
                 ],
             }
 
@@ -419,7 +477,7 @@ class PriceActionService:
                 return model_name, content
 
     @staticmethod
-    async def _call_llm(prompt: str) -> tuple[str, str]:
+    async def _call_llm(system_prompt: str, analysis_rubric: str, user_data: str) -> tuple[str, str]:
         base_url = os.getenv('OPENAI_BASE_URL', '').rstrip('/')
         api_key = os.getenv('OPENAI_API_KEY', '')
         model_name = os.getenv('OPENAI_MODEL', '')
@@ -444,7 +502,9 @@ class PriceActionService:
                         candidate_style,
                         model_name,
                         api_key,
-                        prompt,
+                        system_prompt,
+                        analysis_rubric,
+                        user_data,
                     )
                 except Exception as exc:
                     logger.warning(f'LLM call failed via {candidate_style} at {candidate_base_url}: {exc}')
@@ -460,8 +520,9 @@ class PriceActionService:
         if not kline_data:
             raise ValueError('未获取到可分析的 K 线数据')
 
-        prompt = PriceActionService._build_prompt(kline_data)
-        model_name, analysis_markdown = await PriceActionService._call_llm(prompt)
+        system_prompt, analysis_rubric, user_data = await PriceActionService._build_prompt_layers(kline_data)
+        model_name, analysis_markdown = await PriceActionService._call_llm(system_prompt, analysis_rubric, user_data)
+        prompt = '\n\n===== SYSTEM PROMPT =====\n' + system_prompt + '\n\n===== ANALYSIS RUBRIC =====\n' + analysis_rubric + '\n\n===== USER DATA =====\n' + user_data
 
         report_id = await AnalysisRepository.create_report(
             code=kline_data['code'],

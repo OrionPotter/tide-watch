@@ -28,6 +28,51 @@ class AnalysisRepository:
             )
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_created_at ON analysis_reports(created_at DESC)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_code ON analysis_reports(code)')
+            await conn.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS prompt_assets (
+                    asset_key VARCHAR(255) PRIMARY KEY,
+                    category VARCHAR(50) NOT NULL,
+                    source_path TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                '''
+            )
+            await conn.execute('CREATE INDEX IF NOT EXISTS idx_prompt_assets_category ON prompt_assets(category)')
+
+    @staticmethod
+    async def upsert_prompt_asset(*, asset_key: str, category: str, source_path: str, content: str) -> None:
+        await AnalysisRepository.ensure_table()
+        async with get_db_conn() as conn:
+            await conn.execute(
+                '''
+                INSERT INTO prompt_assets (asset_key, category, source_path, content, updated_at)
+                VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+                ON CONFLICT (asset_key) DO UPDATE
+                SET category = EXCLUDED.category,
+                    source_path = EXCLUDED.source_path,
+                    content = EXCLUDED.content,
+                    updated_at = CURRENT_TIMESTAMP
+                ''',
+                asset_key,
+                category,
+                source_path,
+                content,
+            )
+
+    @staticmethod
+    async def list_prompt_assets() -> list[dict]:
+        await AnalysisRepository.ensure_table()
+        async with get_db_conn() as conn:
+            rows = await conn.fetch(
+                '''
+                SELECT asset_key, category, source_path, content, updated_at
+                FROM prompt_assets
+                ORDER BY category, asset_key
+                '''
+            )
+            return [dict(row) for row in rows]
 
     @staticmethod
     async def create_report(
