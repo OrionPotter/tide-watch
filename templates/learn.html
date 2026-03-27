@@ -13,7 +13,7 @@
         <div class="hero-head">
             <div class="hero-title">
                 <h1>Price Action 学习</h1>
-                <p>按文章卡片浏览教程章节，点击进入详情页学习。</p>
+                <p>按章节浏览教程，先看标题卡片，再进入详情页逐篇学习。</p>
             </div>
         </div>
         <div class="nav-pills-bar">
@@ -29,19 +29,67 @@
     <section class="surface section">
         <div class="section-title">
             <div>
-                <h3>全部文章</h3>
+                <h3>教程目录</h3>
             </div>
             <div class="toolbar-summary" id="learn-count">加载中...</div>
         </div>
-        <div id="learn-grid" class="learn-grid">
+        <div id="learn-groups" class="learn-groups">
             <div class="empty-state">正在加载文章...</div>
         </div>
     </section>
 </div>
 
 <script>
+function getChapterKey(article) {
+    const sourceName = article.source_name || '';
+    const match = sourceName.match(/^(\d{2})/);
+    return match ? match[1] : '00';
+}
+
+function getChapterLabel(article) {
+    const sourceName = article.source_name || '';
+    const match = sourceName.match(/^(\d{2}[A-Z]?)[\s-]+(.+)\.md$/i);
+    if (!match) {
+        return '附录';
+    }
+    return `Chapter ${match[1]} · ${match[2]}`;
+}
+
+function getThemeClass(chapterIndex) {
+    const themes = [
+        'theme-indigo',
+        'theme-cyan',
+        'theme-amber',
+        'theme-emerald',
+        'theme-rose',
+        'theme-slate',
+    ];
+    return themes[chapterIndex % themes.length];
+}
+
+function buildGroups(articles) {
+    const grouped = [];
+    const byKey = new Map();
+
+    articles.forEach(article => {
+        const key = getChapterKey(article);
+        if (!byKey.has(key)) {
+            const group = {
+                key,
+                label: getChapterLabel(article),
+                articles: [],
+            };
+            byKey.set(key, group);
+            grouped.push(group);
+        }
+        byKey.get(key).articles.push(article);
+    });
+
+    return grouped;
+}
+
 async function loadLearnIndex() {
-    const grid = document.getElementById('learn-grid');
+    const container = document.getElementById('learn-groups');
     try {
         const response = await fetch('/api/learn');
         const result = await response.json();
@@ -53,21 +101,34 @@ async function loadLearnIndex() {
         document.getElementById('learn-count').textContent = `${articles.length} 篇文章`;
 
         if (!articles.length) {
-            grid.innerHTML = '<div class="empty-state">暂无学习文章</div>';
+            container.innerHTML = '<div class="empty-state">暂无学习文章</div>';
             return;
         }
 
-        grid.innerHTML = articles.map(article => `
-            <a class="learn-card" href="/learn/${article.slug}">
-                <div class="learn-card-order mono">${article.order}</div>
-                <h4>${article.title}</h4>
-                <div class="learn-card-meta">${article.source_name}</div>
-            </a>
+        const groups = buildGroups(articles);
+        container.innerHTML = groups.map((group, index) => `
+            <section class="learn-group">
+                <div class="learn-group-head">
+                    <div>
+                        <h4>${group.label}</h4>
+                        <div class="learn-group-meta">${group.articles.length} 篇</div>
+                    </div>
+                </div>
+                <div class="learn-grid">
+                    ${group.articles.map(article => `
+                        <a class="learn-card ${getThemeClass(index)}" href="/learn/${article.slug}">
+                            <div class="learn-card-order mono">#${article.order}</div>
+                            <h5>${article.title}</h5>
+                            <div class="learn-card-meta">${article.source_name}</div>
+                        </a>
+                    `).join('')}
+                </div>
+            </section>
         `).join('');
     } catch (error) {
         console.error(error);
         document.getElementById('learn-count').textContent = '加载失败';
-        grid.innerHTML = '<div class="empty-state text-danger">文章列表加载失败</div>';
+        container.innerHTML = '<div class="empty-state text-danger">文章列表加载失败</div>';
     }
 }
 

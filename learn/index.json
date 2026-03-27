@@ -845,12 +845,5 @@
     "source_name": "36B Trade Management and Taking Profits.md",
     "source_url": "https://github.com/forecho/PriceActions/blob/main/36B Trade Management and Taking Profits.md",
     "order": 121
-  },
-  {
-    "slug": "price-action-all-in-one",
-    "title": "[价格行为学全家桶指标](https://tw.tradingview.com/script/n78QYp0G-Price-Action-All-In-One/)",
-    "source_name": "Price Action All In One.md",
-    "source_url": "https://github.com/forecho/PriceActions/blob/main/Price Action All In One.md",
-    "order": 122
   }
 ]
