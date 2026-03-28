@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复盘 - Tidewatch</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
+</head>
+<body>
+<div class="app-shell">
+    <section class="hero">
+        <div class="hero-head">
+            <div class="hero-title">
+                <h1>交易复盘</h1>
+            </div>
+        </div>
+        <div class="nav-pills-bar">
+            <a class="nav-chip" href="/">首页</a>
+            <a class="nav-chip" href="/monitor">监控</a>
+            <a class="nav-chip" href="/tools">工具</a>
+            <a class="nav-chip" href="/xueqiu">组合</a>
+            <a class="nav-chip" href="/analysis">分析</a>
+            <a class="nav-chip is-active" href="/recaps">复盘</a>
+            <a class="nav-chip" href="/learn">学习</a>
+            <a class="nav-chip" href="/admin">管理</a>
+        </div>
+    </section>
+
+    <section class="dashboard-grid dashboard-grid-primary recap-layout">
+        <section class="surface section section-sidebar">
+            <div class="section-title">
+                <div><h3 id="recap-form-title">录入复盘</h3></div>
+            </div>
+            <form id="recap-form" class="form-panel" enctype="multipart/form-data">
+                <input type="hidden" id="recap-id">
+                <input type="hidden" id="keep-existing-image" value="true">
+                <div class="mb-3">
+                    <label class="form-label" for="review-date">时间</label>
+                    <input class="form-control" id="review-date" name="review_date" type="datetime-local" required>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="stock-name">股票名称</label>
+                        <input class="form-control" id="stock-name" name="stock_name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="stock-code">股票代码</label>
+                        <input class="form-control mono" id="stock-code" name="stock_code" placeholder="如 601919">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="take-profit">止盈价</label>
+                        <input class="form-control" id="take-profit" name="take_profit" type="number" step="0.01">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="stop-loss">止损价</label>
+                        <input class="form-control" id="stop-loss" name="stop_loss" type="number" step="0.01">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="risk-reward-ratio">盈亏比</label>
+                        <input class="form-control" id="risk-reward-ratio" name="risk_reward_ratio" type="number" step="0.01" placeholder="如 2.50">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="strategy-tag">策略标签</label>
+                        <input class="form-control" id="strategy-tag" name="strategy_tag" placeholder="如 趋势回踩 / 突破回踩">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="is-success">是否成功</label>
+                        <select class="form-select" id="is-success" name="is_success">
+                            <option value="true">成功</option>
+                            <option value="false">失败</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="image">截图</label>
+                        <input class="form-control" id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label" for="failure-reason">失败原因</label>
+                    <textarea class="form-control" id="failure-reason" name="failure_reason" rows="2" placeholder="成功时可留空"></textarea>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label" for="summary">复盘摘要</label>
+                    <textarea class="form-control" id="summary" name="summary" rows="3" placeholder="记录这笔交易的核心结构、执行和结果"></textarea>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label" for="lessons-learned">经验总结</label>
+                    <textarea class="form-control" id="lessons-learned" name="lessons_learned" rows="3" placeholder="记录下次要继续做或避免的事"></textarea>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label" for="notes">补充备注</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                </div>
+                <div id="image-actions" class="recap-image-actions d-none">
+                    <label class="form-check">
+                        <input class="form-check-input" id="remove-image" type="checkbox">
+                        <span class="form-check-label">删除当前截图</span>
+                    </label>
+                </div>
+                <div class="recap-form-actions">
+                    <button class="btn btn-primary" type="submit" id="recap-submit">保存复盘</button>
+                    <button class="btn btn-outline-secondary" type="button" id="recap-reset">重置</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface section section-table">
+            <div class="section-title">
+                <div><h3>复盘记录</h3></div>
+                <div class="toolbar-summary" id="recap-count">加载中...</div>
+            </div>
+            <div id="recap-list" class="analysis-history analysis-history-scroll">
+                <div class="empty-state">正在加载复盘记录...</div>
+            </div>
+        </section>
+    </section>
+
+    <section class="surface section section-feature">
+        <div class="section-title">
+            <div><h3>详情</h3></div>
+            <div class="toolbar-summary" id="recap-meta">请选择一条复盘记录</div>
+        </div>
+        <div id="recap-detail" class="recap-detail empty-state">录入或点击右侧记录后可查看详情</div>
+    </section>
+</div>
+
+<script src="/static/ui.js"></script>
+<script>
+let currentRecaps = [];
+let activeRecapId = null;
+
+function nowForInput() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const local = new Date(now.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+}
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function formatBool(value) {
+    return value ? '成功' : '失败';
+}
+
+function renderRecapList(records) {
+    const list = document.getElementById('recap-list');
+    document.getElementById('recap-count').textContent = `${records.length} 条`;
+    if (!records.length) {
+        list.innerHTML = '<div class="empty-state">暂无复盘记录</div>';
+        return;
+    }
+    list.innerHTML = records.map(record => `
+        <button class="analysis-history-item ${record.id === activeRecapId ? 'is-active' : ''}" type="button" data-id="${record.id}">
+            <div class="analysis-history-head">
+                <strong>${escapeHtml(record.stock_name)}</strong>
+                <span class="mono">${escapeHtml(record.stock_code || '-')}</span>
+            </div>
+            <div class="analysis-history-meta">
+                <span>${record.review_date}</span>
+                <span>${record.strategy_tag || '未分类'}</span>
+                <span class="${record.is_success ? 'status-positive' : 'status-negative'}">${formatBool(record.is_success)}</span>
+            </div>
+            <div class="analysis-history-time">盈亏比 ${record.risk_reward_ratio ?? '-'}</div>
+        </button>
+    `).join('');
+    list.querySelectorAll('[data-id]').forEach(item => {
+        item.addEventListener('click', () => loadRecapDetail(item.dataset.id));
+    });
+}
+
+function fillForm(record) {
+    document.getElementById('recap-id').value = record.id;
+    document.getElementById('review-date').value = record.review_date.slice(0, 16).replace(' ', 'T');
+    document.getElementById('stock-name').value = record.stock_name || '';
+    document.getElementById('stock-code').value = record.stock_code || '';
+    document.getElementById('take-profit').value = record.take_profit ?? '';
+    document.getElementById('stop-loss').value = record.stop_loss ?? '';
+    document.getElementById('risk-reward-ratio').value = record.risk_reward_ratio ?? '';
+    document.getElementById('is-success').value = String(record.is_success);
+    document.getElementById('failure-reason').value = record.failure_reason || '';
+    document.getElementById('strategy-tag').value = record.strategy_tag || '';
+    document.getElementById('summary').value = record.summary || '';
+    document.getElementById('lessons-learned').value = record.lessons_learned || '';
+    document.getElementById('notes').value = record.notes || '';
+    document.getElementById('image').value = '';
+    document.getElementById('remove-image').checked = false;
+    document.getElementById('keep-existing-image').value = 'true';
+    document.getElementById('image-actions').classList.toggle('d-none', !record.image_path);
+    document.getElementById('recap-form-title').textContent = '编辑复盘';
+    document.getElementById('recap-submit').textContent = '更新复盘';
+}
+
+function resetForm() {
+    document.getElementById('recap-form').reset();
+    document.getElementById('recap-id').value = '';
+    document.getElementById('review-date').value = nowForInput();
+    document.getElementById('keep-existing-image').value = 'true';
+    document.getElementById('image-actions').classList.add('d-none');
+    document.getElementById('recap-form-title').textContent = '录入复盘';
+    document.getElementById('recap-submit').textContent = '保存复盘';
+}
+
+function renderDetail(record) {
+    const detail = document.getElementById('recap-detail');
+    document.getElementById('recap-meta').textContent = `${record.stock_name} / ${record.review_date}`;
+    detail.className = 'recap-detail';
+    detail.innerHTML = `
+        <div class="recap-detail-grid">
+            <div class="recap-detail-main">
+                <div class="recap-detail-tags">
+                    <span class="badge-soft ${record.is_success ? 'badge-success-soft' : 'badge-danger-soft'}">${formatBool(record.is_success)}</span>
+                    <span class="badge-soft badge-primary-soft">${escapeHtml(record.strategy_tag || '未分类')}</span>
+                    <span class="badge-soft badge-gray-soft">盈亏比 ${record.risk_reward_ratio ?? '-'}</span>
+                </div>
+                <div class="recap-detail-fields">
+                    <div><span>股票</span><strong>${escapeHtml(record.stock_name)} ${record.stock_code ? `(${escapeHtml(record.stock_code)})` : ''}</strong></div>
+                    <div><span>止盈 / 止损</span><strong>${record.take_profit ?? '-'} / ${record.stop_loss ?? '-'}</strong></div>
+                </div>
+                <div class="recap-rich-block">
+                    <h4>复盘摘要</h4>
+                    <p>${escapeHtml(record.summary || '暂无内容').replaceAll('\n', '<br>')}</p>
+                </div>
+                <div class="recap-rich-block">
+                    <h4>经验总结</h4>
+                    <p>${escapeHtml(record.lessons_learned || '暂无内容').replaceAll('\n', '<br>')}</p>
+                </div>
+                <div class="recap-rich-block">
+                    <h4>失败原因</h4>
+                    <p>${escapeHtml(record.failure_reason || '暂无内容').replaceAll('\n', '<br>')}</p>
+                </div>
+                <div class="recap-rich-block">
+                    <h4>补充备注</h4>
+                    <p>${escapeHtml(record.notes || '暂无内容').replaceAll('\n', '<br>')}</p>
+                </div>
+            </div>
+            <aside class="recap-detail-side">
+                ${record.image_path ? `<img class="recap-detail-image" src="${record.image_path}" alt="${escapeHtml(record.stock_name)}">` : '<div class="empty-state">暂无截图</div>'}
+                <div class="recap-detail-actions">
+                    <button class="btn btn-outline-primary" type="button" id="edit-recap-btn">编辑</button>
+                    <button class="btn btn-outline-danger" type="button" id="delete-recap-btn">删除</button>
+                </div>
+            </aside>
+        </div>
+    `;
+    document.getElementById('edit-recap-btn').addEventListener('click', () => fillForm(record));
+    document.getElementById('delete-recap-btn').addEventListener('click', () => deleteRecap(record.id));
+}
+
+async function loadRecaps(selectId) {
+    const list = document.getElementById('recap-list');
+    try {
+        const response = await fetch('/api/recaps');
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error('加载失败');
+        }
+        currentRecaps = result.data.records || [];
+        if (selectId && !currentRecaps.some(item => item.id === Number(selectId))) {
+            activeRecapId = null;
+        }
+        renderRecapList(currentRecaps);
+        const targetId = selectId || activeRecapId || (currentRecaps[0] && currentRecaps[0].id);
+        if (targetId) {
+            await loadRecapDetail(targetId);
+        } else {
+            document.getElementById('recap-meta').textContent = '请选择一条复盘记录';
+            document.getElementById('recap-detail').className = 'recap-detail empty-state';
+            document.getElementById('recap-detail').textContent = '录入或点击右侧记录后可查看详情';
+        }
+    } catch (error) {
+        console.error(error);
+        list.innerHTML = '<div class="empty-state text-danger">复盘记录加载失败</div>';
+        document.getElementById('recap-count').textContent = '加载失败';
+    }
+}
+
+async function loadRecapDetail(id) {
+    activeRecapId = Number(id);
+    renderRecapList(currentRecaps);
+    try {
+        const response = await fetch(`/api/recaps/${id}`);
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error('加载失败');
+        }
+        renderDetail(result.data.record);
+    } catch (error) {
+        console.error(error);
+        document.getElementById('recap-meta').textContent = '加载失败';
+        document.getElementById('recap-detail').className = 'recap-detail empty-state text-danger';
+        document.getElementById('recap-detail').textContent = '复盘详情加载失败';
+    }
+}
+
+async function saveRecap(event) {
+    event.preventDefault();
+    const recapId = document.getElementById('recap-id').value;
+    const button = document.getElementById('recap-submit');
+    const form = document.getElementById('recap-form');
+    const formData = new FormData(form);
+    formData.set('is_success', document.getElementById('is-success').value);
+    formData.set('keep_existing_image', document.getElementById('remove-image').checked ? 'false' : 'true');
+
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中';
+    try {
+        const response = await fetch(recapId ? `/api/recaps/${recapId}` : '/api/recaps', {
+            method: recapId ? 'PUT' : 'POST',
+            body: formData,
+        });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error(result.detail || result.message || '保存失败');
+        }
+        showToast(recapId ? '复盘已更新' : '复盘已保存', 'success');
+        const selectedId = result.data.id || Number(recapId);
+        resetForm();
+        await loadRecaps(selectedId);
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || '保存失败', 'error');
+    } finally {
+        button.disabled = false;
+        button.textContent = recapId ? '更新复盘' : '保存复盘';
+    }
+}
+
+async function deleteRecap(id) {
+    if (!window.confirm('确认删除这条复盘记录吗？')) {
+        return;
+    }
+    try {
+        const response = await fetch(`/api/recaps/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            throw new Error(result.detail || result.message || '删除失败');
+        }
+        showToast('复盘已删除', 'success');
+        activeRecapId = null;
+        resetForm();
+        await loadRecaps();
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || '删除失败', 'error');
+    }
+}
+
+document.getElementById('recap-form').addEventListener('submit', saveRecap);
+document.getElementById('recap-reset').addEventListener('click', resetForm);
+document.getElementById('remove-image').addEventListener('change', event => {
+    document.getElementById('keep-existing-image').value = event.target.checked ? 'false' : 'true';
+});
+document.addEventListener('DOMContentLoaded', () => {
+    resetForm();
+    loadRecaps();
+});
+</script>
+</body>
+</html>

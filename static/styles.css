@@ -687,6 +687,10 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(15,23,42,.08);
 }
+.analysis-history-item.is-active {
+  border-color: rgba(14,116,144,.35);
+  background: rgba(14,116,144,.08);
+}
 .analysis-history-head {
   display: flex;
   justify-content: space-between;
@@ -705,6 +709,89 @@ body {
   margin-top: 8px;
   color: var(--muted);
   font-size: 12px;
+}
+.recap-layout {
+  align-items: start;
+}
+.recap-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.recap-image-actions {
+  margin-top: 14px;
+}
+.recap-detail {
+  min-height: 220px;
+}
+.recap-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1.6fr) minmax(280px,.9fr);
+  gap: 24px;
+}
+.recap-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.recap-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.recap-detail-fields div {
+  background: rgba(148,163,184,.12);
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+.recap-detail-fields span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.recap-detail-fields strong {
+  display: block;
+  color: #0f172a;
+  font-size: 15px;
+}
+.recap-rich-block {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 18px;
+  background: #fff;
+}
+.recap-rich-block h4 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.recap-rich-block p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.75;
+}
+.recap-detail-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.recap-detail-image {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(148,163,184,.2);
+  background: #f8fafc;
+  object-fit: cover;
+}
+.recap-detail-actions {
+  display: flex;
+  gap: 12px;
+}
+.recap-detail-actions .btn {
+  flex: 1;
 }
 
 @media (max-width: 768px) {
@@ -733,6 +820,13 @@ body {
     max-height: none;
     overflow: visible;
     padding-right: 0;
+  }
+  .recap-detail-grid,
+  .recap-detail-fields {
+    grid-template-columns: 1fr;
+  }
+  .recap-detail-actions {
+    flex-direction: column;
   }
   .learn-grid {
     grid-template-columns: 1fr;

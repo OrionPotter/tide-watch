@@ -66,6 +66,7 @@ PAGE_TEMPLATES = {
     '/analysis': 'analysis.html',
     '/learn': 'learn.html',
     '/monitor': 'monitor.html',
+    '/recaps': 'recaps.html',
     '/tools': 'tools.html',
     '/xueqiu': 'xueqiu.html',
 }

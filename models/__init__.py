@@ -3,6 +3,7 @@ from .stock import Stock
 from .monitor_stock import MonitorStock
 from .monitor_data_cache import MonitorDataCache
 from .kline_data import KlineData
+from .recap import RecapRecord
 from .xueqiu_cube import XueqiuCube
 from .stock_list import StockList
 
@@ -11,6 +12,7 @@ __all__ = [
     'MonitorStock',
     'MonitorDataCache',
     'KlineData',
+    'RecapRecord',
     'XueqiuCube',
     'StockList'
 ]

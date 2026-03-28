@@ -393,6 +393,28 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_created_at ON analysis_reports(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_code ON analysis_reports(code);
 
+CREATE TABLE IF NOT EXISTS trade_recaps (
+    id SERIAL PRIMARY KEY,
+    review_date TIMESTAMP NOT NULL,
+    stock_name VARCHAR(100) NOT NULL,
+    stock_code VARCHAR(20),
+    take_profit NUMERIC(12, 4),
+    stop_loss NUMERIC(12, 4),
+    risk_reward_ratio NUMERIC(12, 4),
+    is_success BOOLEAN NOT NULL DEFAULT FALSE,
+    failure_reason TEXT,
+    strategy_tag VARCHAR(100),
+    summary TEXT,
+    lessons_learned TEXT,
+    notes TEXT,
+    image_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_recaps_review_date ON trade_recaps(review_date DESC);
+CREATE INDEX IF NOT EXISTS idx_trade_recaps_stock_code ON trade_recaps(stock_code);
+
 CREATE TABLE IF NOT EXISTS prompt_assets (
     asset_key VARCHAR(255) PRIMARY KEY,
     category VARCHAR(50) NOT NULL,
