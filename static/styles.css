@@ -742,44 +742,31 @@ body {
   flex-wrap: wrap;
   align-items: center;
 }
-.recap-action-menu {
-  position: relative;
-}
-.recap-action-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 140px;
-  padding: 8px;
-  border: 1px solid rgba(148,163,184,.22);
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 16px 40px rgba(15,23,42,.12);
-  display: grid;
-  gap: 6px;
-  z-index: 40;
-}
-.recap-action-dropdown .dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #0f172a;
-  font-size: 14px;
-  text-align: left;
+.recap-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(15,118,110,.18);
+  border-radius: 999px;
+  background: rgba(13,148,136,.08);
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
   text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
 }
-.recap-action-dropdown .dropdown-item:hover {
-  background: rgba(148,163,184,.12);
+.recap-detail-btn span {
+  font-size: 14px;
+  line-height: 1;
 }
-.recap-action-dropdown .dropdown-item.is-danger {
-  color: #dc2626;
-}
-.recap-detail-menu .recap-action-dropdown {
-  left: 0;
-  right: auto;
+.recap-detail-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(13,148,136,.14);
+  box-shadow: 0 10px 24px rgba(15,118,110,.12);
+  color: #115e59;
+  text-decoration: none;
 }
 .recap-failure-cell {
   max-width: 240px;
@@ -1008,10 +995,6 @@ body.modal-open {
   }
   .recap-row-actions {
     justify-content: flex-start;
-  }
-  .recap-action-dropdown {
-    left: 0;
-    right: auto;
   }
   .recap-list-toolbar {
     align-items: stretch;

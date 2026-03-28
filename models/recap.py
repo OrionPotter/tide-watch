@@ -11,6 +11,7 @@ class RecapRecord:
     take_profit: float | None
     stop_loss: float | None
     risk_reward_ratio: float | None
+    profit_amount: float | None
     is_success: bool
     failure_reason: str | None
     strategy_tag: str | None
@@ -30,6 +31,7 @@ class RecapRecord:
             'take_profit': self.take_profit,
             'stop_loss': self.stop_loss,
             'risk_reward_ratio': self.risk_reward_ratio,
+            'profit_amount': self.profit_amount,
             'is_success': self.is_success,
             'failure_reason': self.failure_reason,
             'strategy_tag': self.strategy_tag,

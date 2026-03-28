@@ -21,6 +21,7 @@ class RecapRepository:
                     take_profit NUMERIC(12, 4),
                     stop_loss NUMERIC(12, 4),
                     risk_reward_ratio NUMERIC(12, 4),
+                    profit_amount NUMERIC(14, 2),
                     is_success BOOLEAN NOT NULL DEFAULT FALSE,
                     failure_reason TEXT,
                     strategy_tag VARCHAR(100),
@@ -33,6 +34,7 @@ class RecapRepository:
                 )
                 '''
             )
+            await conn.execute('ALTER TABLE trade_recaps ADD COLUMN IF NOT EXISTS profit_amount NUMERIC(14, 2)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_trade_recaps_review_date ON trade_recaps(review_date DESC)')
             await conn.execute('CREATE INDEX IF NOT EXISTS idx_trade_recaps_stock_code ON trade_recaps(stock_code)')
 
@@ -46,6 +48,7 @@ class RecapRepository:
             take_profit=float(row['take_profit']) if row['take_profit'] is not None else None,
             stop_loss=float(row['stop_loss']) if row['stop_loss'] is not None else None,
             risk_reward_ratio=float(row['risk_reward_ratio']) if row['risk_reward_ratio'] is not None else None,
+            profit_amount=float(row['profit_amount']) if row['profit_amount'] is not None else None,
             is_success=row['is_success'],
             failure_reason=row['failure_reason'],
             summary=row['summary'],
@@ -95,6 +98,7 @@ class RecapRepository:
         take_profit: float | None,
         stop_loss: float | None,
         risk_reward_ratio: float | None,
+        profit_amount: float | None,
         is_success: bool,
         failure_reason: str | None,
         strategy_tag: str | None,
@@ -109,8 +113,8 @@ class RecapRepository:
                 '''
                 INSERT INTO trade_recaps (
                     review_date, stock_name, stock_code, take_profit, stop_loss, risk_reward_ratio,
-                    is_success, failure_reason, strategy_tag, summary, lessons_learned, notes, image_path
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    profit_amount, is_success, failure_reason, strategy_tag, summary, lessons_learned, notes, image_path
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id
                 ''',
                 review_date,
@@ -119,6 +123,7 @@ class RecapRepository:
                 take_profit,
                 stop_loss,
                 risk_reward_ratio,
+                profit_amount,
                 is_success,
                 failure_reason,
                 strategy_tag,
@@ -139,6 +144,7 @@ class RecapRepository:
         take_profit: float | None,
         stop_loss: float | None,
         risk_reward_ratio: float | None,
+        profit_amount: float | None,
         is_success: bool,
         failure_reason: str | None,
         strategy_tag: str | None,
@@ -158,15 +164,16 @@ class RecapRepository:
                     take_profit = $4,
                     stop_loss = $5,
                     risk_reward_ratio = $6,
-                    is_success = $7,
-                    failure_reason = $8,
-                    strategy_tag = $9,
-                    summary = $10,
-                    lessons_learned = $11,
-                    notes = $12,
-                    image_path = $13,
+                    profit_amount = $7,
+                    is_success = $8,
+                    failure_reason = $9,
+                    strategy_tag = $10,
+                    summary = $11,
+                    lessons_learned = $12,
+                    notes = $13,
+                    image_path = $14,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = $14
+                WHERE id = $15
                 ''',
                 review_date,
                 stock_name,
@@ -174,6 +181,7 @@ class RecapRepository:
                 take_profit,
                 stop_loss,
                 risk_reward_ratio,
+                profit_amount,
                 is_success,
                 failure_reason,
                 strategy_tag,

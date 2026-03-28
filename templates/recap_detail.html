@@ -32,13 +32,8 @@
             <div><h3 id="detail-meta">加载中...</h3></div>
             <div class="recap-list-toolbar">
                 <a class="btn btn-outline-secondary" href="/recaps">返回列表</a>
-                <div class="recap-action-menu recap-detail-menu">
-                    <button class="btn btn-primary recap-menu-trigger" type="button">编辑</button>
-                    <div class="recap-action-dropdown d-none">
-                        <a class="dropdown-item" id="edit-recap-link" href="#">更新</a>
-                        <button class="dropdown-item is-danger" type="button" id="delete-recap-btn">删除</button>
-                    </div>
-                </div>
+                <a class="btn btn-primary" id="edit-recap-link" href="#">更新</a>
+                <button class="btn btn-outline-danger" type="button" id="delete-recap-btn">删除</button>
             </div>
         </div>
         <div id="recap-detail" class="recap-detail empty-state">正在加载复盘详情...</div>
@@ -79,6 +74,8 @@ function renderDetail(record) {
                 <div class="recap-detail-fields">
                     <div><span>股票</span><strong>${escapeHtml(record.stock_name)} ${record.stock_code ? `(${escapeHtml(record.stock_code)})` : ''}</strong></div>
                     <div><span>止盈 / 止损</span><strong>${record.take_profit ?? '-'} / ${record.stop_loss ?? '-'}</strong></div>
+                    <div><span>盈亏金额</span><strong>${record.profit_amount ?? '-'}</strong></div>
+                    <div><span>盈亏比</span><strong>${record.risk_reward_ratio ?? '-'}</strong></div>
                 </div>
                 <div class="recap-rich-block">
                     <h4>复盘摘要</h4>
@@ -116,25 +113,6 @@ function renderDetail(record) {
     if (previewButton) {
         previewButton.addEventListener('click', () => openImagePreview(record.image_path, record.stock_name));
     }
-}
-
-function closeRecapMenus() {
-    document.querySelectorAll('.recap-action-dropdown').forEach(menu => menu.classList.add('d-none'));
-}
-
-function bindRecapMenus() {
-    document.querySelectorAll('.recap-menu-trigger').forEach(button => {
-        button.onclick = event => {
-            event.preventDefault();
-            event.stopPropagation();
-            const menu = button.parentElement.querySelector('.recap-action-dropdown');
-            const willOpen = menu.classList.contains('d-none');
-            closeRecapMenus();
-            if (willOpen) {
-                menu.classList.remove('d-none');
-            }
-        };
-    });
 }
 
 function openImagePreview(imagePath, title) {
@@ -177,7 +155,6 @@ async function loadRecord() {
             throw new Error('加载失败');
         }
         renderDetail(result.data.record);
-        bindRecapMenus();
     } catch (error) {
         console.error(error);
         document.getElementById('detail-meta').textContent = '加载失败';
@@ -204,7 +181,6 @@ async function deleteRecap() {
 }
 
 document.getElementById('delete-recap-btn').addEventListener('click', deleteRecap);
-document.addEventListener('click', closeRecapMenus);
 document.addEventListener('DOMContentLoaded', loadRecord);
 </script>
 </body>

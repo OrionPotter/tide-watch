@@ -401,6 +401,7 @@ CREATE TABLE IF NOT EXISTS trade_recaps (
     take_profit NUMERIC(12, 4),
     stop_loss NUMERIC(12, 4),
     risk_reward_ratio NUMERIC(12, 4),
+    profit_amount NUMERIC(14, 2),
     is_success BOOLEAN NOT NULL DEFAULT FALSE,
     failure_reason TEXT,
     strategy_tag VARCHAR(100),

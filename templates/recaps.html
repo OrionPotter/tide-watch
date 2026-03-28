@@ -44,15 +44,14 @@
                         <th>时间</th>
                         <th>股票</th>
                         <th>策略</th>
+                        <th class="text-end">盈亏金额</th>
                         <th class="text-end">盈亏比</th>
                         <th class="text-center">结果</th>
-                        <th>失败原因</th>
-                        <th class="text-center">截图</th>
                         <th class="text-end">操作</th>
                     </tr>
                 </thead>
                 <tbody id="recap-table-body">
-                    <tr><td colspan="8" class="empty-state">正在加载复盘记录...</td></tr>
+                    <tr><td colspan="7" class="empty-state">正在加载复盘记录...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -74,11 +73,11 @@ function formatBool(value) {
     return value ? '成功' : '失败';
 }
 
-function formatFailureReason(record) {
-    if (record.is_success) {
-        return '<span class="text-muted">-</span>';
+function formatMoney(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) {
+        return '-';
     }
-    return escapeHtml(record.failure_reason || '未填写');
+    return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 async function loadRecaps() {
@@ -92,7 +91,7 @@ async function loadRecaps() {
         const records = result.data.records || [];
         document.getElementById('recap-count').textContent = `${records.length} 条记录`;
         if (!records.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无复盘记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无复盘记录</td></tr>';
             return;
         }
         tbody.innerHTML = records.map(record => `
@@ -105,51 +104,23 @@ async function loadRecaps() {
                     <div class="text-muted small mono">${escapeHtml(record.stock_code || '-')}</div>
                 </td>
                 <td>${escapeHtml(record.strategy_tag || '未分类')}</td>
+                <td class="text-end mono ${Number(record.profit_amount) > 0 ? 'status-positive' : Number(record.profit_amount) < 0 ? 'status-negative' : ''}">${formatMoney(record.profit_amount)}</td>
                 <td class="text-end mono">${record.risk_reward_ratio ?? '-'}</td>
                 <td class="text-center">
                     <span class="badge-soft ${record.is_success ? 'badge-success-soft' : 'badge-danger-soft'}">${formatBool(record.is_success)}</span>
                 </td>
-                <td class="recap-failure-cell">${formatFailureReason(record)}</td>
-                <td class="text-center">${record.image_path ? '<span class="badge-soft badge-primary-soft">有</span>' : '<span class="badge-soft badge-gray-soft">无</span>'}</td>
                 <td class="text-end">
                     <div class="recap-row-actions">
-                        <a class="btn btn-sm btn-outline-secondary" href="/recaps/${record.id}">详情</a>
-                        <div class="recap-action-menu">
-                            <button class="btn btn-sm btn-outline-primary recap-menu-trigger" type="button">编辑</button>
-                            <div class="recap-action-dropdown d-none">
-                                <a class="dropdown-item" href="/recaps/${record.id}/edit">更新</a>
-                                <button class="dropdown-item is-danger" type="button" onclick="deleteRecap(${record.id})">删除</button>
-                            </div>
-                        </div>
+                        <a class="recap-detail-btn" href="/recaps/${record.id}">查看详情 <span>→</span></a>
                     </div>
                 </td>
             </tr>
         `).join('');
-        bindRecapMenus();
     } catch (error) {
         console.error(error);
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state text-danger">复盘记录加载失败</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state text-danger">复盘记录加载失败</td></tr>';
         document.getElementById('recap-count').textContent = '加载失败';
     }
-}
-
-function closeRecapMenus() {
-    document.querySelectorAll('.recap-action-dropdown').forEach(menu => menu.classList.add('d-none'));
-}
-
-function bindRecapMenus() {
-    document.querySelectorAll('.recap-menu-trigger').forEach(button => {
-        button.onclick = event => {
-            event.preventDefault();
-            event.stopPropagation();
-            const menu = button.parentElement.querySelector('.recap-action-dropdown');
-            const willOpen = menu.classList.contains('d-none');
-            closeRecapMenus();
-            if (willOpen) {
-                menu.classList.remove('d-none');
-            }
-        };
-    });
 }
 
 async function deleteRecap(id) {
@@ -170,7 +141,6 @@ async function deleteRecap(id) {
     }
 }
 
-document.addEventListener('click', closeRecapMenus);
 document.addEventListener('DOMContentLoaded', loadRecaps);
 </script>
 </body>
