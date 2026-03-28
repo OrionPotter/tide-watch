@@ -114,22 +114,42 @@ async function loadRecaps() {
                 <td class="text-end">
                     <div class="recap-row-actions">
                         <a class="btn btn-sm btn-outline-secondary" href="/recaps/${record.id}">详情</a>
-                        <details class="recap-action-menu">
-                            <summary class="btn btn-sm btn-outline-primary">编辑</summary>
-                            <div class="recap-action-dropdown">
+                        <div class="recap-action-menu">
+                            <button class="btn btn-sm btn-outline-primary recap-menu-trigger" type="button">编辑</button>
+                            <div class="recap-action-dropdown d-none">
                                 <a class="dropdown-item" href="/recaps/${record.id}/edit">更新</a>
                                 <button class="dropdown-item is-danger" type="button" onclick="deleteRecap(${record.id})">删除</button>
                             </div>
-                        </details>
+                        </div>
                     </div>
                 </td>
             </tr>
         `).join('');
+        bindRecapMenus();
     } catch (error) {
         console.error(error);
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state text-danger">复盘记录加载失败</td></tr>';
         document.getElementById('recap-count').textContent = '加载失败';
     }
+}
+
+function closeRecapMenus() {
+    document.querySelectorAll('.recap-action-dropdown').forEach(menu => menu.classList.add('d-none'));
+}
+
+function bindRecapMenus() {
+    document.querySelectorAll('.recap-menu-trigger').forEach(button => {
+        button.onclick = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = button.parentElement.querySelector('.recap-action-dropdown');
+            const willOpen = menu.classList.contains('d-none');
+            closeRecapMenus();
+            if (willOpen) {
+                menu.classList.remove('d-none');
+            }
+        };
+    });
 }
 
 async function deleteRecap(id) {
@@ -150,6 +170,7 @@ async function deleteRecap(id) {
     }
 }
 
+document.addEventListener('click', closeRecapMenus);
 document.addEventListener('DOMContentLoaded', loadRecaps);
 </script>
 </body>

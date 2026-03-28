@@ -14,16 +14,6 @@
             <div class="hero-title">
                 <h1 id="detail-title">复盘详情</h1>
             </div>
-            <div class="hero-actions">
-                <a class="btn btn-outline-secondary" href="/recaps">返回列表</a>
-                <details class="recap-action-menu recap-detail-menu">
-                    <summary class="btn btn-primary">编辑</summary>
-                    <div class="recap-action-dropdown">
-                        <a class="dropdown-item" id="edit-recap-link" href="#">更新</a>
-                        <button class="dropdown-item is-danger" type="button" id="delete-recap-btn">删除</button>
-                    </div>
-                </details>
-            </div>
         </div>
         <div class="nav-pills-bar">
             <a class="nav-chip" href="/">首页</a>
@@ -40,6 +30,16 @@
     <section class="surface section section-feature">
         <div class="section-title">
             <div><h3 id="detail-meta">加载中...</h3></div>
+            <div class="recap-list-toolbar">
+                <a class="btn btn-outline-secondary" href="/recaps">返回列表</a>
+                <div class="recap-action-menu recap-detail-menu">
+                    <button class="btn btn-primary recap-menu-trigger" type="button">编辑</button>
+                    <div class="recap-action-dropdown d-none">
+                        <a class="dropdown-item" id="edit-recap-link" href="#">更新</a>
+                        <button class="dropdown-item is-danger" type="button" id="delete-recap-btn">删除</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="recap-detail" class="recap-detail empty-state">正在加载复盘详情...</div>
     </section>
@@ -118,6 +118,25 @@ function renderDetail(record) {
     }
 }
 
+function closeRecapMenus() {
+    document.querySelectorAll('.recap-action-dropdown').forEach(menu => menu.classList.add('d-none'));
+}
+
+function bindRecapMenus() {
+    document.querySelectorAll('.recap-menu-trigger').forEach(button => {
+        button.onclick = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = button.parentElement.querySelector('.recap-action-dropdown');
+            const willOpen = menu.classList.contains('d-none');
+            closeRecapMenus();
+            if (willOpen) {
+                menu.classList.remove('d-none');
+            }
+        };
+    });
+}
+
 function openImagePreview(imagePath, title) {
     const existing = document.getElementById('recap-image-modal');
     if (existing) {
@@ -158,6 +177,7 @@ async function loadRecord() {
             throw new Error('加载失败');
         }
         renderDetail(result.data.record);
+        bindRecapMenus();
     } catch (error) {
         console.error(error);
         document.getElementById('detail-meta').textContent = '加载失败';
@@ -184,6 +204,7 @@ async function deleteRecap() {
 }
 
 document.getElementById('delete-recap-btn').addEventListener('click', deleteRecap);
+document.addEventListener('click', closeRecapMenus);
 document.addEventListener('DOMContentLoaded', loadRecord);
 </script>
 </body>

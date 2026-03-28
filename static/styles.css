@@ -745,12 +745,6 @@ body {
 .recap-action-menu {
   position: relative;
 }
-.recap-action-menu summary {
-  list-style: none;
-}
-.recap-action-menu summary::-webkit-details-marker {
-  display: none;
-}
 .recap-action-dropdown {
   position: absolute;
   top: calc(100% + 8px);
