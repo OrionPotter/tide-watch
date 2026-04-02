@@ -8,7 +8,6 @@
 -- DROP TABLE IF EXISTS stock_kline_data CASCADE;
 -- DROP TABLE IF EXISTS monitor_stocks CASCADE;
 -- DROP TABLE IF EXISTS portfolio CASCADE;
--- DROP TABLE IF EXISTS xueqiu_cubes CASCADE;
 
 -- 创建股票持仓表
 CREATE TABLE IF NOT EXISTS portfolio (
@@ -84,16 +83,6 @@ CREATE TABLE IF NOT EXISTS kline_update_log (
     CONSTRAINT chk_count_valid CHECK (success_count <= total_count)
 );
 
--- 创建雪球组合表
-CREATE TABLE IF NOT EXISTS xueqiu_cubes (
-    id SERIAL PRIMARY KEY,
-    cube_symbol TEXT UNIQUE NOT NULL,
-    cube_name TEXT NOT NULL,
-    enabled INTEGER DEFAULT 1 CHECK (enabled IN (0, 1)),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS alerts (
     id SERIAL PRIMARY KEY,
     stock_code TEXT,
@@ -142,9 +131,6 @@ CREATE INDEX IF NOT EXISTS idx_kline_created ON stock_kline_data(created_at);
 CREATE INDEX IF NOT EXISTS idx_update_log_date ON kline_update_log(update_date);
 CREATE INDEX IF NOT EXISTS idx_update_log_status ON kline_update_log(status);
 
--- xueqiu_cubes表索引
-CREATE INDEX IF NOT EXISTS idx_xueqiu_cube_symbol ON xueqiu_cubes(cube_symbol);
-CREATE INDEX IF NOT EXISTS idx_xueqiu_enabled ON xueqiu_cubes(enabled);
 CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
 CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
 CREATE INDEX IF NOT EXISTS idx_alerts_type ON alerts(alert_type);
@@ -200,21 +186,6 @@ CREATE TRIGGER trigger_update_stock_kline_data_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_stock_kline_data_updated_at();
 
--- xueqiu_cubes表触发器
-CREATE OR REPLACE FUNCTION update_xueqiu_cubes_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_update_xueqiu_cubes_updated_at ON xueqiu_cubes;
-CREATE TRIGGER trigger_update_xueqiu_cubes_updated_at
-    BEFORE UPDATE ON xueqiu_cubes
-    FOR EACH ROW
-    EXECUTE FUNCTION update_xueqiu_cubes_updated_at();
-
 -- stock_list表触发器
 CREATE OR REPLACE FUNCTION update_stock_list_updated_at()
 RETURNS TRIGGER AS $$
@@ -262,15 +233,6 @@ INSERT INTO monitor_stocks (code, name, timeframe, reasonable_pe_min, reasonable
 ('sz000915', '华特达因', '2d', 15.0, 20.0),
 ('sz002142', '宁波银行', '2d', 6.0, 9.0)
 ON CONFLICT (code) DO NOTHING;
-
--- 雪球组合初始数据
-INSERT INTO xueqiu_cubes (cube_symbol, cube_name, enabled) VALUES
-('ZH2363479', '万万没想到', 1),
-('ZH3154960', '知行合一', 1),
-('ZH1759090', '控鹤', 1),
-('ZH2043700', '打野题材', 1),
-('ZH1350829', '大匡哥', 1)
-ON CONFLICT (cube_symbol) DO NOTHING;
 
 -- 创建视图以便查询
 -- 投资组合汇总视图

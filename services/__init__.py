@@ -3,7 +3,6 @@ from .portfolio_service import PortfolioService
 from .monitor_service import MonitorService
 from .kline_service import KlineService
 from .data_service import DataService
-from .xueqiu_service import XueqiuService
 from .stock_list_service import StockListService
 
 __all__ = [
@@ -11,6 +10,5 @@ __all__ = [
     'MonitorService',
     'KlineService',
     'DataService',
-    'XueqiuService',
     'StockListService'
 ]

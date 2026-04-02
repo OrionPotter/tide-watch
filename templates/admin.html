@@ -30,7 +30,6 @@
             <div class="metric-card"><div class="metric-label">持仓条目</div><div class="metric-value mono" id="metric-stocks">-</div><div class="metric-sub">投资组合中的股票数量</div></div>
             <div class="metric-card"><div class="metric-label">监控条目</div><div class="metric-value mono" id="metric-monitors">-</div><div class="metric-sub">当前配置的监控股票数</div></div>
             <div class="metric-card"><div class="metric-label">启用监控</div><div class="metric-value mono" id="metric-enabled-monitors">-</div><div class="metric-sub">正在启用的监控股票</div></div>
-            <div class="metric-card"><div class="metric-label">雪球组合</div><div class="metric-value mono" id="metric-cubes">-</div><div class="metric-sub">已配置的组合数量</div></div>
         </div>
     </section>
 
@@ -81,44 +80,21 @@
         </div>
     </section>
 
-    <section class="surface section">
-        <div class="panel-card">
-            <div class="panel-card-header"><div><h4>雪球组合管理</h4></div></div>
-            <div class="panel-card-body">
-                <form id="xueqiu-form" class="form-panel">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-lg-4"><label for="xueqiu-symbol" class="form-label">组合 ID</label><input type="text" class="form-control" id="xueqiu-symbol" placeholder="如 ZH2363479" required></div>
-                        <div class="col-lg-4"><label for="xueqiu-name" class="form-label">组合名称</label><input type="text" class="form-control" id="xueqiu-name" placeholder="输入前台展示名称" required></div>
-                        <div class="col-lg-2"><label for="xueqiu-enabled" class="form-label">状态</label><select class="form-select" id="xueqiu-enabled"><option value="true">启用</option><option value="false">禁用</option></select></div>
-                        <div class="col-lg-2 d-flex gap-2"><button type="submit" class="btn btn-primary w-100">保存</button><button type="button" class="btn btn-outline-secondary w-100" onclick="resetXueqiuForm()">重置</button></div>
-                    </div>
-                </form>
-                <div class="table-wrap mt-4">
-                    <table class="table-modern">
-                        <thead><tr><th>组合 ID</th><th>组合名称</th><th class="text-center">状态</th><th class="text-end">操作</th></tr></thead>
-                        <tbody id="xueqiu-table-body"><tr><td colspan="4" class="empty-state">正在加载数据...</td></tr></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </section>
 </div>
 
 <script>
 let editingStock = null;
 let editingMonitorStock = null;
-let editingXueqiuCube = null;
 
 function formatMoney(num) {
     if (num === undefined || num === null) return '-';
     return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function softBadge(text, tone) { return `<span class="badge-soft ${tone}">${text}</span>`; }
-function updateMetrics({ stocks = 0, monitors = 0, enabledMonitors = 0, cubes = 0 }) {
+function updateMetrics({ stocks = 0, monitors = 0, enabledMonitors = 0 }) {
     document.getElementById('metric-stocks').textContent = stocks;
     document.getElementById('metric-monitors').textContent = monitors;
     document.getElementById('metric-enabled-monitors').textContent = enabledMonitors;
-    document.getElementById('metric-cubes').textContent = cubes;
 }
 
 async function loadStocks() {
@@ -147,8 +123,7 @@ async function loadStocks() {
         }
         const current = Number(document.getElementById('metric-monitors').textContent) || 0;
         const enabled = Number(document.getElementById('metric-enabled-monitors').textContent) || 0;
-        const cubes = Number(document.getElementById('metric-cubes').textContent) || 0;
-        updateMetrics({ stocks: items.length, monitors: current, enabledMonitors: enabled, cubes });
+        updateMetrics({ stocks: items.length, monitors: current, enabledMonitors: enabled });
     } catch (error) {
         document.getElementById('stocks-table-body').innerHTML = '<tr><td colspan="5" class="empty-state text-danger">加载持仓数据失败</td></tr>';
         showToast('加载持仓数据失败', 'error');
@@ -224,8 +199,7 @@ async function loadMonitorStocks() {
             });
         }
         const stocks = Number(document.getElementById('metric-stocks').textContent) || 0;
-        const cubes = Number(document.getElementById('metric-cubes').textContent) || 0;
-        updateMetrics({ stocks, monitors: items.length, enabledMonitors: items.filter(item => item.enabled).length, cubes });
+        updateMetrics({ stocks, monitors: items.length, enabledMonitors: items.filter(item => item.enabled).length });
     } catch (error) {
         document.getElementById('monitor-table-body').innerHTML = '<tr><td colspan="6" class="empty-state text-danger">加载监控股票失败</td></tr>';
         showToast('加载监控股票失败', 'error');
@@ -279,90 +253,11 @@ function resetMonitorForm() {
     editingMonitorStock = null;
 }
 
-async function loadXueqiuCubes() {
-    try {
-        const response = await fetch('/api/admin/xueqiu-cubes');
-        const result = await response.json();
-        const tbody = document.getElementById('xueqiu-table-body');
-        tbody.innerHTML = '';
-        const items = result.data || [];
-        if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无雪球组合数据</td></tr>';
-        } else {
-            items.forEach(cube => {
-                const tr = document.createElement('tr');
-                const statusBadge = cube.enabled ? softBadge('启用', 'badge-success-soft') : softBadge('禁用', 'badge-gray-soft');
-                tr.innerHTML = `
-                    <td class="mono">${cube.cube_symbol}</td>
-                    <td><strong>${cube.cube_name}</strong></td>
-                    <td class="text-center">${statusBadge}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary me-2" onclick="editXueqiuCube(${JSON.stringify(cube).replace(/"/g, '&quot;')})">编辑</button>
-                        <button class="btn btn-sm btn-outline-${cube.enabled ? 'warning' : 'success'} me-2" onclick="toggleXueqiuCube('${cube.cube_symbol}', ${!cube.enabled})">${cube.enabled ? '禁用' : '启用'}</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteXueqiuCube('${cube.cube_symbol}')">删除</button>
-                    </td>`;
-                tbody.appendChild(tr);
-            });
-        }
-        const stocks = Number(document.getElementById('metric-stocks').textContent) || 0;
-        const monitors = Number(document.getElementById('metric-monitors').textContent) || 0;
-        const enabledMonitors = Number(document.getElementById('metric-enabled-monitors').textContent) || 0;
-        updateMetrics({ stocks, monitors, enabledMonitors, cubes: items.length });
-    } catch (error) {
-        document.getElementById('xueqiu-table-body').innerHTML = '<tr><td colspan="4" class="empty-state text-danger">加载雪球组合失败</td></tr>';
-        showToast('加载雪球组合失败', 'error');
-    }
-}
-async function saveXueqiuCube(event) {
-    event.preventDefault();
-    const cubeSymbol = document.getElementById('xueqiu-symbol').value.trim();
-    const cubeName = document.getElementById('xueqiu-name').value.trim();
-    const enabled = document.getElementById('xueqiu-enabled').value === 'true';
-    if (!cubeSymbol || !cubeName) return showToast('请填写所有字段', 'info');
-    const cubeData = { cube_symbol: cubeSymbol, cube_name: cubeName, enabled };
-    const url = editingXueqiuCube ? `/api/admin/xueqiu-cubes/${editingXueqiuCube.cube_symbol}` : '/api/admin/xueqiu-cubes';
-    const method = editingXueqiuCube ? 'PUT' : 'POST';
-    try {
-        const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cubeData) });
-        const result = await response.json();
-        if (result.status === 'success') { showToast(result.message, 'success'); resetXueqiuForm(); loadXueqiuCubes(); } else showToast(result.message || '操作失败', 'error');
-    } catch (error) { showToast('保存失败，请检查网络连接', 'error'); }
-}
-function editXueqiuCube(cube) {
-    editingXueqiuCube = cube;
-    document.getElementById('xueqiu-symbol').value = cube.cube_symbol;
-    document.getElementById('xueqiu-name').value = cube.cube_name;
-    document.getElementById('xueqiu-enabled').value = cube.enabled.toString();
-    document.getElementById('xueqiu-symbol').disabled = true;
-}
-async function deleteXueqiuCube(cubeSymbol) {
-    if (!confirm(`确定删除雪球组合 ${cubeSymbol} 吗？`)) return;
-    try {
-        const response = await fetch(`/api/admin/xueqiu-cubes/${cubeSymbol}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (result.status === 'success') { showToast(result.message, 'success'); loadXueqiuCubes(); } else showToast(result.message || '删除失败', 'error');
-    } catch (error) { showToast('删除失败，请检查网络连接', 'error'); }
-}
-async function toggleXueqiuCube(cubeSymbol, enabled) {
-    try {
-        const response = await fetch(`/api/admin/xueqiu-cubes/${cubeSymbol}/toggle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
-        const result = await response.json();
-        if (result.status === 'success') { showToast(result.message, 'success'); loadXueqiuCubes(); } else showToast(result.message || '操作失败', 'error');
-    } catch (error) { showToast('操作失败，请检查网络连接', 'error'); }
-}
-function resetXueqiuForm() {
-    document.getElementById('xueqiu-form').reset();
-    document.getElementById('xueqiu-symbol').disabled = false;
-    editingXueqiuCube = null;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     loadStocks();
     loadMonitorStocks();
-    loadXueqiuCubes();
     document.getElementById('stock-form').addEventListener('submit', saveStock);
     document.getElementById('monitor-form').addEventListener('submit', saveMonitorStock);
-    document.getElementById('xueqiu-form').addEventListener('submit', saveXueqiuCube);
 });
 </script>
 <script src="/static/ui.js"></script>

@@ -37,7 +37,6 @@ class TestDashboardRoutes:
             'focus_stocks': monitor_stocks,
             'buy_candidates': monitor_stocks,
             'risk_stocks': [],
-            'xueqiu_updates': [],
             'system_status': {
                 'holding_count': 1,
                 'monitor_count': 1,
